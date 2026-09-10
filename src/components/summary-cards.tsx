@@ -122,6 +122,11 @@ export function SummaryCards({ columns, rows, allColumns, selectedPeriod }: Summ
   let yoyAdrStr: string | null = null;
   let yoyAdrPositive = true;
 
+  let momLiqStr: string | null = null;
+  let momLiqPositive = true;
+  let yoyLiqStr: string | null = null;
+  let yoyLiqPositive = true;
+
   if (selectedPeriod === "current" && columns.length > 0) {
     const currCol = columns[0];
     const fullRegularCols = fullCols.filter((c) => !c.isTotal);
@@ -146,6 +151,13 @@ export function SummaryCards({ columns, rows, allColumns, selectedPeriod }: Summ
         momAdrPositive = diffAdr >= 0;
         momAdrStr = `${diffAdr > 0 ? "+" : ""}${(diffAdr * 100).toFixed(1)}% M/M`;
       }
+
+      const prevLiq = (rows.find((r) => r.id === "receita_liquida_locacao")?.values[prevCol.key] as number) || 0;
+      if (prevLiq > 0) {
+        const diffLiq = (totalLiquidoLocacao - prevLiq) / prevLiq;
+        momLiqPositive = diffLiq >= 0;
+        momLiqStr = `${diffLiq > 0 ? "+" : ""}${(diffLiq * 100).toFixed(1)}% M/M`;
+      }
     }
 
     if (currCol.year === 2026) {
@@ -166,6 +178,13 @@ export function SummaryCards({ columns, rows, allColumns, selectedPeriod }: Summ
         const diffAdrYoY = (tarifaBrutaMedia - prevAdrYoY) / prevAdrYoY;
         yoyAdrPositive = diffAdrYoY >= 0;
         yoyAdrStr = `${diffAdrYoY > 0 ? "+" : ""}${(diffAdrYoY * 100).toFixed(1)}% A/A`;
+      }
+
+      const prevLiqYoY = (rows.find((r) => r.id === "receita_liquida_locacao")?.values[prevYearKey] as number) || 0;
+      if (prevLiqYoY > 0) {
+        const diffLiqYoY = (totalLiquidoLocacao - prevLiqYoY) / prevLiqYoY;
+        yoyLiqPositive = diffLiqYoY >= 0;
+        yoyLiqStr = `${diffLiqYoY > 0 ? "+" : ""}${(diffLiqYoY * 100).toFixed(1)}% A/A`;
       }
     }
   }
@@ -278,12 +297,42 @@ export function SummaryCards({ columns, rows, allColumns, selectedPeriod }: Summ
             <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-emerald-700 tabular-nums">
               {formatCurrency(totalLiquidoLocacao)}
             </h3>
-            <div className="mt-2 flex items-center min-h-[22px]">
-              <span className="text-xs text-zinc-500">
-                {totalFaturamentoBruto > 0
-                  ? `Margem: ${((totalLiquidoLocacao / totalFaturamentoBruto) * 100).toFixed(1)}%`
-                  : "Resultado líquido apurado"}
-              </span>
+            <div className="mt-2 flex items-center gap-1.5 flex-wrap min-h-[22px]">
+              {momLiqStr ? (
+                <>
+                  <span
+                    className={`font-semibold px-1.5 py-0.5 rounded text-[11px] ${
+                      momLiqPositive
+                        ? "text-emerald-700 bg-emerald-50 border border-emerald-200/60"
+                        : "text-rose-700 bg-rose-50 border border-rose-200/60"
+                    }`}
+                  >
+                    {momLiqStr}
+                  </span>
+                  {yoyLiqStr && (
+                    <span
+                      className={`font-semibold px-1.5 py-0.5 rounded text-[11px] ${
+                        yoyLiqPositive
+                          ? "text-emerald-700 bg-emerald-50 border border-emerald-200/60"
+                          : "text-rose-700 bg-rose-50 border border-rose-200/60"
+                      }`}
+                    >
+                      {yoyLiqStr}
+                    </span>
+                  )}
+                  {totalFaturamentoBruto > 0 && (
+                    <span className="text-[11px] text-zinc-400 font-medium">
+                      ({((totalLiquidoLocacao / totalFaturamentoBruto) * 100).toFixed(0)}% margem)
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className="text-xs text-zinc-500">
+                  {totalFaturamentoBruto > 0
+                    ? `Margem: ${((totalLiquidoLocacao / totalFaturamentoBruto) * 100).toFixed(1)}%`
+                    : "Resultado líquido apurado"}
+                </span>
+              )}
             </div>
           </div>
         </div>

@@ -45,7 +45,12 @@ export function DreTable({ columns, rows, allColumns }: DreTableProps) {
     return (diarias / checkins).toFixed(1) + " noites";
   };
 
-  // KPI 2: Variação MoM Faturamento (%)
+  // Helper for Líquido Locação of a column
+  const getLiquido = (colKey: string): number => {
+    return getValue("receita_liquida_locacao", colKey) || 0;
+  };
+
+  // KPI 2: Variação MoM Faturamento Bruto (%)
   const getMomFaturamento = (col: ColumnDef): { text: string; color: string } => {
     if (col.isTotal) return { text: "—", color: "text-zinc-400" };
 
@@ -58,6 +63,24 @@ export function DreTable({ columns, rows, allColumns }: DreTableProps) {
 
     if (prevFat <= 0) return { text: "—", color: "text-zinc-400" };
     const diff = (currFat - prevFat) / prevFat;
+    const prefix = diff > 0 ? "+" : "";
+    const color = diff > 0 ? "text-emerald-700 font-semibold" : diff < 0 ? "text-rose-600 font-semibold" : "text-zinc-600";
+    return { text: `${prefix}${(diff * 100).toFixed(1)}%`, color };
+  };
+
+  // KPI 2.1: Variação MoM Líquido Locação (%)
+  const getMomLiquido = (col: ColumnDef): { text: string; color: string } => {
+    if (col.isTotal) return { text: "—", color: "text-zinc-400" };
+
+    const regIdx = regularAllCols.findIndex((c) => c.key === col.key);
+    if (regIdx <= 0) return { text: "—", color: "text-zinc-400" };
+
+    const prevCol = regularAllCols[regIdx - 1];
+    const currLiq = getLiquido(col.key);
+    const prevLiq = getLiquido(prevCol.key);
+
+    if (prevLiq <= 0) return { text: "—", color: "text-zinc-400" };
+    const diff = (currLiq - prevLiq) / prevLiq;
     const prefix = diff > 0 ? "+" : "";
     const color = diff > 0 ? "text-emerald-700 font-semibold" : diff < 0 ? "text-rose-600 font-semibold" : "text-zinc-600";
     return { text: `${prefix}${(diff * 100).toFixed(1)}%`, color };
@@ -81,8 +104,8 @@ export function DreTable({ columns, rows, allColumns }: DreTableProps) {
     return { text: `${prefix}${(diff * 100).toFixed(1)}%`, color };
   };
 
-  // KPI 4: Variação Ano a Ano (YoY %)
-  const getYoY = (col: ColumnDef): { text: string; color: string } => {
+  // KPI 4: Variação Ano a Ano (YoY Faturamento Bruto %)
+  const getYoYFatBruto = (col: ColumnDef): { text: string; color: string } => {
     if (col.isTotal || col.year !== 2026) return { text: "—", color: "text-zinc-400" };
 
     // Find the corresponding month in 2025
@@ -92,6 +115,21 @@ export function DreTable({ columns, rows, allColumns }: DreTableProps) {
 
     if (prevFat <= 0) return { text: "—", color: "text-zinc-400" };
     const diff = (currFat - prevFat) / prevFat;
+    const prefix = diff > 0 ? "+" : "";
+    const color = diff > 0 ? "text-emerald-700 font-semibold" : diff < 0 ? "text-rose-600 font-semibold" : "text-zinc-600";
+    return { text: `${prefix}${(diff * 100).toFixed(1)}%`, color };
+  };
+
+  // KPI 5: Variação Ano a Ano (YoY Líquido Locação %)
+  const getYoYLiquido = (col: ColumnDef): { text: string; color: string } => {
+    if (col.isTotal || col.year !== 2026) return { text: "—", color: "text-zinc-400" };
+
+    const prevYearKey = `2025-${col.key.split("-")[1]}`;
+    const currLiq = getLiquido(col.key);
+    const prevLiq = getLiquido(prevYearKey);
+
+    if (prevLiq <= 0) return { text: "—", color: "text-zinc-400" };
+    const diff = (currLiq - prevLiq) / prevLiq;
     const prefix = diff > 0 ? "+" : "";
     const color = diff > 0 ? "text-emerald-700 font-semibold" : diff < 0 ? "text-rose-600 font-semibold" : "text-zinc-600";
     return { text: `${prefix}${(diff * 100).toFixed(1)}%`, color };
@@ -220,13 +258,28 @@ export function DreTable({ columns, rows, allColumns }: DreTableProps) {
                 ))}
               </tr>
 
-              {/* KPI 2: Variação MoM Faturamento */}
+              {/* KPI 2: Variação MoM Faturamento Bruto */}
               <tr className="bg-zinc-50/30 hover:bg-zinc-50/80 transition-colors">
                 <td className="sticky left-0 z-10 py-3 pl-5 pr-4 font-medium text-zinc-800 border-r border-zinc-200 bg-[#fafafa] shadow-[1px_0_0_0_#e4e4e7] whitespace-nowrap">
-                  Variação MoM Faturamento
+                  Variação MoM Faturamento Bruto
                 </td>
                 {columns.map((col) => {
                   const { text, color } = getMomFaturamento(col);
+                  return (
+                    <td key={col.key} className={cn("px-4 py-3 text-right tabular-nums whitespace-nowrap", color)}>
+                      {text}
+                    </td>
+                  );
+                })}
+              </tr>
+
+              {/* KPI 2.1: Variação MoM Líquido Locação */}
+              <tr className="bg-emerald-50/20 hover:bg-emerald-50/40 transition-colors">
+                <td className="sticky left-0 z-10 py-3 pl-5 pr-4 font-medium text-emerald-950 border-r border-zinc-200 bg-[#f4faf6] shadow-[1px_0_0_0_#e4e4e7] whitespace-nowrap">
+                  Variação MoM Líquido Locação
+                </td>
+                {columns.map((col) => {
+                  const { text, color } = getMomLiquido(col);
                   return (
                     <td key={col.key} className={cn("px-4 py-3 text-right tabular-nums whitespace-nowrap", color)}>
                       {text}
@@ -250,13 +303,28 @@ export function DreTable({ columns, rows, allColumns }: DreTableProps) {
                 })}
               </tr>
 
-              {/* KPI 4: Variação Ano a Ano (YoY) */}
+              {/* KPI 4: Variação Ano a Ano (YoY Faturamento Bruto) */}
               <tr className="bg-zinc-50/30 hover:bg-zinc-50/80 transition-colors">
                 <td className="sticky left-0 z-10 py-3 pl-5 pr-4 font-medium text-zinc-800 border-r border-zinc-200 bg-[#fafafa] shadow-[1px_0_0_0_#e4e4e7] whitespace-nowrap">
-                  Variação Ano a Ano (YoY Faturamento)
+                  Variação Ano a Ano (YoY Faturamento Bruto)
                 </td>
                 {columns.map((col) => {
-                  const { text, color } = getYoY(col);
+                  const { text, color } = getYoYFatBruto(col);
+                  return (
+                    <td key={col.key} className={cn("px-4 py-3 text-right tabular-nums whitespace-nowrap", color)}>
+                      {text}
+                    </td>
+                  );
+                })}
+              </tr>
+
+              {/* KPI 5: Variação Ano a Ano (YoY Líquido Locação) */}
+              <tr className="bg-emerald-50/20 hover:bg-emerald-50/40 transition-colors">
+                <td className="sticky left-0 z-10 py-3 pl-5 pr-4 font-semibold text-emerald-950 border-r border-zinc-200 bg-[#f4faf6] shadow-[1px_0_0_0_#e4e4e7] whitespace-nowrap">
+                  Variação Ano a Ano (YoY Líquido Locação)
+                </td>
+                {columns.map((col) => {
+                  const { text, color } = getYoYLiquido(col);
                   return (
                     <td key={col.key} className={cn("px-4 py-3 text-right tabular-nums whitespace-nowrap", color)}>
                       {text}
