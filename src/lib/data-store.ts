@@ -1,47 +1,37 @@
-import { CopanData } from "./types";
+import { PropertyData } from "./types";
 import initialCopanRaw from "../../data/copan.json";
-import fs from "fs";
-import path from "path";
+import initial320Raw from "../../data/flatincrivel-320.json";
+import initial229Raw from "../../data/flatincrivel-229.json";
+import { PROPERTIES, PropertyMeta } from "./properties";
+
+export { PROPERTIES };
+export type { PropertyMeta };
 
 // In-memory cache for local runtime & serverless instances
-let inMemoryCache: Record<string, CopanData> = {
-  copan: initialCopanRaw as unknown as CopanData,
+let inMemoryCache: Record<string, PropertyData> = {
+  copan: initialCopanRaw as unknown as PropertyData,
+  "flatincrivel-320": initial320Raw as unknown as PropertyData,
+  "flatincrivel-229": initial229Raw as unknown as PropertyData,
 };
 
-export interface PropertyMeta {
-  id: string;
-  name: string;
-  listing: string;
-  city: string;
-  active: boolean;
+function normalizePropertyId(id: string): string {
+  const clean = id.toLowerCase().trim();
+  if (clean === "320" || clean === "apto320" || clean === "ape320") return "flatincrivel-320";
+  if (clean === "229" || clean === "apto229" || clean === "ape229") return "flatincrivel-229";
+  return clean;
 }
-
-export const PROPERTIES: PropertyMeta[] = [
-  {
-    id: "copan",
-    name: "Edifício Copan",
-    listing: "Vem pro Copan, vista e design",
-    city: "São Paulo, SP",
-    active: true,
-  },
-  {
-    id: "riviera",
-    name: "Flat Riviera",
-    listing: "Flat na Riviera com Piscina Climatizada",
-    city: "Bertioga, SP",
-    active: false,
-  },
-];
 
 /**
  * Retrieves property data from Vercel KV, Vercel Blob, or local JSON.
  */
-export async function getPropertyData(propertyId: string = "copan"): Promise<CopanData> {
+export async function getPropertyData(rawPropertyId: string = "copan"): Promise<PropertyData> {
+  const propertyId = normalizePropertyId(rawPropertyId);
+
   // 1. Try Vercel KV (if connected on Vercel)
   if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
     try {
       const { kv } = await import("@vercel/kv");
-      const remoteData = await kv.get<CopanData>(`property:${propertyId}`);
+      const remoteData = await kv.get<PropertyData>(`property:${propertyId}`);
       if (remoteData && remoteData.columns && remoteData.rows) {
         return remoteData;
       }
@@ -59,7 +49,7 @@ export async function getPropertyData(propertyId: string = "copan"): Promise<Cop
         const res = await fetch(blobs[0].url, { cache: "no-store" });
         if (res.ok) {
           const blobData = await res.json();
-          return blobData as CopanData;
+          return blobData as PropertyData;
         }
       }
     } catch (err) {
@@ -72,14 +62,38 @@ export async function getPropertyData(propertyId: string = "copan"): Promise<Cop
     return inMemoryCache[propertyId];
   }
 
-  // 4. Default static data
-  return initialCopanRaw as unknown as CopanData;
+  // 4. Try reading directly from disk if in node environment
+  if (typeof window === "undefined") {
+    try {
+      const fs = await import("fs");
+      const path = await import("path");
+      const filePath = path.join(process.cwd(), "data", `${propertyId}.json`);
+      if (fs.existsSync(filePath)) {
+        const raw = fs.readFileSync(filePath, "utf-8");
+        const parsed = JSON.parse(raw) as PropertyData;
+        inMemoryCache[propertyId] = parsed;
+        return parsed;
+      }
+    } catch (e) {
+      console.warn("Error reading local json file:", e);
+    }
+  }
+
+  // 5. Default static data
+  if (propertyId === "flatincrivel-320") return initial320Raw as unknown as PropertyData;
+  if (propertyId === "flatincrivel-229") return initial229Raw as unknown as PropertyData;
+  return initialCopanRaw as unknown as PropertyData;
 }
 
 /**
  * Saves updated property data to Vercel KV, Vercel Blob, or local disk.
  */
-export async function savePropertyData(propertyId: string, updatedData: CopanData): Promise<{ success: boolean; storageType: string }> {
+export async function savePropertyData(
+  rawPropertyId: string,
+  updatedData: PropertyData
+): Promise<{ success: boolean; storageType: string }> {
+  const propertyId = normalizePropertyId(rawPropertyId);
+
   // Always update in-memory cache
   inMemoryCache[propertyId] = updatedData;
 
@@ -110,9 +124,11 @@ export async function savePropertyData(propertyId: string, updatedData: CopanDat
     }
   }
 
-  // 3. If running locally, save to local data/copan.json file on disk
-  if (process.env.NODE_ENV !== "production") {
+  // 3. If running locally on Node server, save to local data/<propertyId>.json file on disk
+  if (typeof window === "undefined" && process.env.NODE_ENV !== "production") {
     try {
+      const fs = await import("fs");
+      const path = await import("path");
       const filePath = path.join(process.cwd(), "data", `${propertyId}.json`);
       if (fs.existsSync(path.dirname(filePath))) {
         await fs.promises.writeFile(filePath, JSON.stringify(updatedData, null, 2), "utf8");

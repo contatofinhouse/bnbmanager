@@ -22,14 +22,32 @@ export interface OffsiteRecord {
   lavanderia: number;
 }
 
-export interface CopanData {
+export interface PropertyData {
   property: {
+    id: string;
+    slug?: string;
     name: string;
     listing: string;
     city: string;
-    cotas: number;
+    cotas?: number; // 0 ou indefinido = sem divisão de cotas; 3 = Flat 229 (dividido por 3)
+    valorMercado?: number;
   };
   columns: ColumnDef[];
   rows: RowDef[];
-  offsite: OffsiteRecord[];
+  offsite?: OffsiteRecord[];
+}
+
+export type CopanData = PropertyData;
+
+export interface ExpenseExtractedItem {
+  fornecedor: string;
+  valor: number;
+  data: string; // YYYY-MM-DD
+  mesCompetencia: string; // YYYY-MM
+  categoria: string; // "condominio" | "energia_eletrica" | "iptu" | "manutencao" | "lavanderia_diarista" | "capex" | "outros"
+  categoriaLabel: string;
+  imovelSugerido: string; // "copan" | "flatincrivel-320" | "flatincrivel-229"
+  descricao: string;
+  confianca: number; // 0 a 1
+  codigoBarras?: string;
 }

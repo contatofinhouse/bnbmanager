@@ -31,7 +31,8 @@ export function DreTable({ columns, rows, allColumns }: DreTableProps) {
     const airbnb = getValue("receita_airbnb", colKey) || 0;
     const booking = getValue("receita_booking", colKey) || 0;
     const offsite = getValue("receita_offsite", colKey) || 0;
-    return airbnb + booking + offsite;
+    const pet = getValue("diarias_pet", colKey) || 0;
+    return airbnb + booking + offsite + pet;
   };
 
   // Chronological regular columns from allColumns or columns
@@ -106,10 +107,19 @@ export function DreTable({ columns, rows, allColumns }: DreTableProps) {
 
   // KPI 4: Variação Ano a Ano (YoY Faturamento Bruto %)
   const getYoYFatBruto = (col: ColumnDef): { text: string; color: string } => {
-    if (col.isTotal || col.year !== 2026) return { text: "—", color: "text-zinc-400" };
+    if (col.isTotal) {
+      const prevYearTotalKey = `${col.year - 1}-total`;
+      const prevFat = getFaturamento(prevYearTotalKey);
+      const currFat = getFaturamento(col.key);
+      if (prevFat <= 0) return { text: "—", color: "text-zinc-400" };
+      const diff = (currFat - prevFat) / prevFat;
+      const prefix = diff > 0 ? "+" : "";
+      const color = diff > 0 ? "text-emerald-700 font-semibold" : diff < 0 ? "text-rose-600 font-semibold" : "text-zinc-600";
+      return { text: `${prefix}${(diff * 100).toFixed(1)}%`, color };
+    }
 
-    // Find the corresponding month in 2025
-    const prevYearKey = `2025-${col.key.split("-")[1]}`;
+    const [cYear, cMonth] = col.key.split("-");
+    const prevYearKey = `${parseInt(cYear, 10) - 1}-${cMonth}`;
     const currFat = getFaturamento(col.key);
     const prevFat = getFaturamento(prevYearKey);
 
@@ -122,9 +132,19 @@ export function DreTable({ columns, rows, allColumns }: DreTableProps) {
 
   // KPI 5: Variação Ano a Ano (YoY Líquido Locação %)
   const getYoYLiquido = (col: ColumnDef): { text: string; color: string } => {
-    if (col.isTotal || col.year !== 2026) return { text: "—", color: "text-zinc-400" };
+    if (col.isTotal) {
+      const prevYearTotalKey = `${col.year - 1}-total`;
+      const prevLiq = getLiquido(prevYearTotalKey);
+      const currLiq = getLiquido(col.key);
+      if (prevLiq <= 0) return { text: "—", color: "text-zinc-400" };
+      const diff = (currLiq - prevLiq) / prevLiq;
+      const prefix = diff > 0 ? "+" : "";
+      const color = diff > 0 ? "text-emerald-700 font-semibold" : diff < 0 ? "text-rose-600 font-semibold" : "text-zinc-600";
+      return { text: `${prefix}${(diff * 100).toFixed(1)}%`, color };
+    }
 
-    const prevYearKey = `2025-${col.key.split("-")[1]}`;
+    const [cYear, cMonth] = col.key.split("-");
+    const prevYearKey = `${parseInt(cYear, 10) - 1}-${cMonth}`;
     const currLiq = getLiquido(col.key);
     const prevLiq = getLiquido(prevYearKey);
 

@@ -128,7 +128,7 @@ export function DownloadModal({
               {/* Show reverse chronological (newest first) */}
               {[...regularCols].reverse().map((col) => (
                 <option key={col.key} value={col.key}>
-                  {col.label} ({col.year}) {col.key === "2026-08" ? "— Mês Atual (Arquivo Real Airbnb)" : ""}
+                  {col.label} ({col.year}) {col.key === regularCols[regularCols.length - 1]?.key ? "— Mês Atual" : ""}
                 </option>
               ))}
             </select>
