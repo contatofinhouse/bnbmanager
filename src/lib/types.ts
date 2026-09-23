@@ -29,8 +29,13 @@ export interface PropertyData {
     name: string;
     listing: string;
     city: string;
-    cotas?: number; // 0 ou indefinido = sem divisão de cotas; 3 = Flat 229 (dividido por 3)
+    cotas?: number; // 0 ou indefinido = sem divisão de cotas; 2 = Flat 320; 3 = Flat 229; 4 = Copan
     valorMercado?: number;
+    valorFinanciado?: number;
+    capexInicial?: number;
+    capexObras?: number;
+    capexTotal?: number;
+    taxaDesconto?: number;
   };
   columns: ColumnDef[];
   rows: RowDef[];

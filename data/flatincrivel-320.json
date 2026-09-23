@@ -3,10 +3,15 @@
     "id": "flatincrivel-320",
     "slug": "flatincrivel-320",
     "name": "Flat Incrível 320",
-    "listing": "Flat Incrível 320 - Riviera",
+    "listing": "Flat na Riviera com Piscina Climatizada",
     "city": "Riviera de São Lourenço, Bertioga, SP",
-    "cotas": 0,
-    "valorMercado": 535000
+    "cotas": 2,
+    "valorMercado": 535000,
+    "valorFinanciado": 428000,
+    "capexInicial": 129900.73,
+    "capexObras": 8208.00,
+    "capexTotal": 138108.73,
+    "taxaDesconto": 0.10
   },
   "columns": [
     {

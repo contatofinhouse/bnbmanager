@@ -57,7 +57,9 @@ export function Header({
 
               {displayCotas && displayCotas > 0 ? (
                 <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 border border-amber-200/80">
-                  {displayCotas} Cotistas
+                  {displayCotas === 2
+                    ? "2 Cotistas (50% / 50%)"
+                    : `${displayCotas} Cotistas`}
                 </span>
               ) : null}
             </div>

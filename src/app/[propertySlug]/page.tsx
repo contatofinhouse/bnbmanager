@@ -9,6 +9,7 @@ import { PropertyData, ColumnDef } from "@/lib/types";
 import { Header } from "@/components/header";
 import { SummaryCards } from "@/components/summary-cards";
 import { DreTable } from "@/components/dre-table";
+import { InstitutionalValuationSection } from "@/components/institutional-valuation-section";
 import { CheckCircle2 } from "lucide-react";
 
 export default function PropertyDashboard() {
@@ -27,7 +28,12 @@ export default function PropertyDashboard() {
 
   // Update data if slug changes
   useEffect(() => {
-    setData(getInitialData(slug));
+    const init = getInitialData(slug);
+    setData(init);
+    if (init?.property?.name) {
+      document.title = `${init.property.name} — ${init.property.listing} | bnbmanager`;
+    }
+
     fetch(`/api/property?id=${slug}`)
       .then((res) => {
         if (res.ok) return res.json();
@@ -36,6 +42,9 @@ export default function PropertyDashboard() {
       .then((json) => {
         if (json.data && json.data.columns && json.data.rows) {
           setData(json.data);
+          if (json.data?.property?.name) {
+            document.title = `${json.data.property.name} — ${json.data.property.listing} | bnbmanager`;
+          }
         }
       })
       .catch((err) => {
@@ -102,6 +111,16 @@ export default function PropertyDashboard() {
           rows={data.rows}
           allColumns={data.columns}
         />
+
+        {/* Institutional Valuation & Return on Investment Section (Metodologia Brookfield / Institutional Real Estate) */}
+        {(slug === "flatincrivel-320" || slug === "320") && (
+          <InstitutionalValuationSection
+            property={data.property}
+            columns={filteredColumns}
+            rows={data.rows}
+            allColumns={data.columns}
+          />
+        )}
       </main>
     </div>
   );
