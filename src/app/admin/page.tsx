@@ -63,7 +63,7 @@ export default function AdminPage() {
 
   const loadPropertyData = async (propId: string) => {
     try {
-      const res = await fetch(`/api/property?id=${propId}`);
+      const res = await fetch(`/api/property?id=${propId}&_t=${Date.now()}`, { cache: "no-store" });
       if (res.ok) {
         const json = await res.json();
         setCurrentData(json.data);

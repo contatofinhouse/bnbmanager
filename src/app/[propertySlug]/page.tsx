@@ -34,7 +34,7 @@ export default function PropertyDashboard() {
       document.title = `${init.property.name} — ${init.property.listing} | bnbmanager`;
     }
 
-    fetch(`/api/property?id=${slug}`)
+    fetch(`/api/property?id=${slug}&_t=${Date.now()}`, { cache: "no-store" })
       .then((res) => {
         if (res.ok) return res.json();
         throw new Error("Failed to fetch property data");

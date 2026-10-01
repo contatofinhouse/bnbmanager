@@ -33,6 +33,7 @@ export async function getPropertyData(rawPropertyId: string = "copan"): Promise<
       const { kv } = await import("@vercel/kv");
       const remoteData = await kv.get<PropertyData>(`property:${propertyId}`);
       if (remoteData && remoteData.columns && remoteData.rows) {
+        inMemoryCache[propertyId] = remoteData;
         return remoteData;
       }
     } catch (err) {
@@ -46,10 +47,15 @@ export async function getPropertyData(rawPropertyId: string = "copan"): Promise<
       const { list } = await import("@vercel/blob");
       const { blobs } = await list({ prefix: `data/${propertyId}.json` });
       if (blobs.length > 0) {
-        const res = await fetch(blobs[0].url, { cache: "no-store" });
+        // Sort descending by uploadedAt to get the latest version
+        const sorted = blobs.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+        const res = await fetch(`${sorted[0].url}?_t=${Date.now()}`, { cache: "no-store" });
         if (res.ok) {
-          const blobData = await res.json();
-          return blobData as PropertyData;
+          const blobData = (await res.json()) as PropertyData;
+          if (blobData && blobData.columns && blobData.rows) {
+            inMemoryCache[propertyId] = blobData;
+            return blobData;
+          }
         }
       }
     } catch (err) {
@@ -57,12 +63,7 @@ export async function getPropertyData(rawPropertyId: string = "copan"): Promise<
     }
   }
 
-  // 3. In-memory cache
-  if (inMemoryCache[propertyId]) {
-    return inMemoryCache[propertyId];
-  }
-
-  // 4. Try reading directly from disk if in node environment
+  // 3. Try reading directly from disk if in node environment
   if (typeof window === "undefined") {
     try {
       const fs = await import("fs");
@@ -77,6 +78,11 @@ export async function getPropertyData(rawPropertyId: string = "copan"): Promise<
     } catch (e) {
       console.warn("Error reading local json file:", e);
     }
+  }
+
+  // 4. In-memory cache
+  if (inMemoryCache[propertyId]) {
+    return inMemoryCache[propertyId];
   }
 
   // 5. Default static data
@@ -117,6 +123,7 @@ export async function savePropertyData(
       await put(`data/${propertyId}.json`, JSON.stringify(updatedData, null, 2), {
         access: "public",
         addRandomSuffix: false,
+        allowOverwrite: true,
       });
       return { success: true, storageType: "vercel-blob" };
     } catch (err: any) {
@@ -124,8 +131,8 @@ export async function savePropertyData(
     }
   }
 
-  // 3. If running locally on Node server, save to local data/<propertyId>.json file on disk
-  if (typeof window === "undefined" && process.env.NODE_ENV !== "production") {
+  // 3. If running locally or on writable server, save to local data/<propertyId>.json
+  if (typeof window === "undefined") {
     try {
       const fs = await import("fs");
       const path = await import("path");
@@ -135,7 +142,7 @@ export async function savePropertyData(
         storageType = "local-disk";
       }
     } catch (err) {
-      console.warn("Could not write to local disk:", err);
+      // Read-only filesystem in serverless, will rely on inMemoryCache or remote
     }
   }
 
