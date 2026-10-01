@@ -31,6 +31,10 @@ O projeto foi construído no padrão nativo do Next.js sem dependências de serv
 3. Selecione o repositório e clique em **Deploy**.
 4. Pronto! Você terá um link público seguro (ex: `bnbmanager.vercel.app`) para compartilhar com seus sócios.
 
+### 💾 Persistência em Nuvem (Vercel Blob)
+Para que as importações mensais feitas via web no painel `/admin` fiquem salvas permanentemente na nuvem, consulte o guia passo a passo em:  
+👉 [COMO_ATIVAR_SALVAMENTO_NUVEM.md](COMO_ATIVAR_SALVAMENTO_NUVEM.md)
+
 ---
 
 ## 📊 Funcionalidades
