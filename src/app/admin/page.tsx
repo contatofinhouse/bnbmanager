@@ -33,9 +33,9 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Property & Data State
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>("copan");
   const [currentData, setCurrentData] = useState<PropertyData | null>(null);
+  const [storageInfo, setStorageInfo] = useState<{ hasKv: boolean; hasBlob: boolean } | null>(null);
 
   // Modals state
   const [isRawUploadOpen, setIsRawUploadOpen] = useState(false);
@@ -46,7 +46,24 @@ export default function AdminPage() {
   // Check auth on mount
   useEffect(() => {
     checkAuth();
+    fetch("/api/admin/storage-status")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.env) setStorageInfo(json.env);
+      })
+      .catch(() => {});
   }, []);
+
+  const handleDownloadBackup = () => {
+    if (!currentData) return;
+    const blob = new Blob([JSON.stringify(currentData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${selectedPropertyId}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const checkAuth = async () => {
     try {
@@ -126,11 +143,15 @@ export default function AdminPage() {
 
       const json = await res.json();
       if (res.ok && json.success) {
-        setNotification(
-          `Relatório de ${consolidated.label} publicado com sucesso para ${propId}! Faturamento bruto: ${formatCurrency(
-            consolidated.faturamentoBruto
-          )}.`
-        );
+        let msg = `Relatório de ${consolidated.label} publicado com sucesso para ${propId}! Faturamento bruto: ${formatCurrency(
+          consolidated.faturamentoBruto
+        )}.`;
+        if (json.storageType === "blob") {
+          msg += " (Salvo permanentemente no Vercel Blob).";
+        } else if (json.storageType === "local-memory") {
+          msg += " (Aviso: Vercel Blob não conectado. Use 'Baixar JSON' para salvar o arquivo se necessário).";
+        }
+        setNotification(msg);
         loadPropertyData(propId);
       } else {
         alert(json.error || "Erro ao publicar mês.");
@@ -244,6 +265,28 @@ export default function AdminPage() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {storageInfo && (
+              <div
+                title={
+                  storageInfo.hasBlob || storageInfo.hasKv
+                    ? "Armazenamento em Nuvem Ativo (Vercel Blob): Suas alterações persistem permanentemente online em todos os acessos."
+                    : "Atenção: Vercel Blob não conectado. As alterações feitas online ficam apenas em memória temporária. Ative o Vercel Blob no painel da Vercel para persistência automática."
+                }
+                className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${
+                  storageInfo.hasBlob || storageInfo.hasKv
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-amber-50 text-amber-700 border-amber-200"
+                }`}
+              >
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    storageInfo.hasBlob || storageInfo.hasKv ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+                  }`}
+                />
+                {storageInfo.hasBlob || storageInfo.hasKv ? "Nuvem Conectada" : "Modo Local / Sem Blob"}
+              </div>
+            )}
+
             <Link
               href={`/${selectedPropertyId}`}
               target="_blank"
@@ -328,6 +371,16 @@ export default function AdminPage() {
               >
                 <Sparkles className="h-4 w-4" />
                 <span>Analisar Despesas (IA / Boleto / Extrato)</span>
+              </button>
+
+              <button
+                onClick={handleDownloadBackup}
+                disabled={!currentData}
+                title="Baixar arquivo JSON atualizado da propriedade"
+                className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-700 shadow-2xs hover:bg-zinc-50 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <Download className="h-4 w-4 text-zinc-400" />
+                <span>Baixar JSON</span>
               </button>
             </div>
           </div>
