@@ -92,8 +92,9 @@ export function consolidateMonthData(
     // Administration: 10% on Airbnb/direct
     administracao = Math.round(-0.1 * receitaAirbnb * 100) / 100;
   } else {
-    // Flats standard: approx ~R$ 70 to R$ 90 per checkin or maintain previous month benchmark
-    lavanderia = totalCheckins > 0 ? -80 * totalCheckins : 0;
+    // Flats standard: lavanderia comes from external expense sheets / provided separately,
+    // NOT from Airbnb/Booking revenue reports. Preserve existing if entered via despesas, else 0.
+    lavanderia = getExisting("lavanderia_diarista") || 0;
   }
 
   const receitaLiquida =
