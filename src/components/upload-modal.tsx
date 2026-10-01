@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { X, UploadCloud, FileText, CheckCircle2, AlertCircle, Building2, Layers } from "lucide-react";
+import { X, UploadCloud, FileText, CheckCircle2, AlertCircle, Building2, Layers, Save } from "lucide-react";
 import * as XLSX from "xlsx";
 import { parseAirbnbRaw, AirbnbMonthlySummary } from "@/lib/raw-parsers/airbnb-parser";
 import { parseBookingRaw, BookingMonthlySummary } from "@/lib/raw-parsers/booking-parser";
@@ -334,13 +334,14 @@ export function UploadModal({
           <button
             disabled={!parsedAirbnb && !parsedBooking}
             onClick={handleConfirm}
-            className={`rounded-lg px-4 py-2 text-xs font-semibold text-white transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold text-white transition-colors ${
               parsedAirbnb || parsedBooking
-                ? "bg-zinc-950 hover:bg-zinc-800 cursor-pointer"
+                ? "bg-zinc-950 hover:bg-zinc-800 cursor-pointer shadow-xs"
                 : "bg-zinc-300 cursor-not-allowed"
             }`}
           >
-            Consolidar e Aplicar na DRE
+            <Save className="h-4 w-4" />
+            <span>Salvar e Publicar na DRE</span>
           </button>
         </div>
       </div>
