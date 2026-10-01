@@ -107,12 +107,18 @@ export function parseAirbnbRaw(
       if (targetPropertyId === "flatincrivel-229" && !(aLower.includes("229") || aLower.includes("duplex") || aLower.includes("flat incrível"))) continue;
     }
 
+    // Use "Data" (transaction/payout date) for month filtering — this matches how Airbnb groups its reports
+    const dataRaw = row["Data"] || row["\ufeffData"] || row["Date"] || "";
+    const parsedDataDate = parseDateStr(dataRaw);
+    if (targetMonthKey && parsedDataDate) {
+      const rowMonthKey = `${parsedDataDate.year}-${String(parsedDataDate.month).padStart(2, "0")}`;
+      if (rowMonthKey !== targetMonthKey) continue;
+    }
+
+    // "Data de início" (check-in date) is used for the reservation record
     const inicioRaw = row["Data de início"] || row["Start date"] || row["Entrada"] || "";
     const parsedDate = parseDateStr(inicioRaw);
-    if (!parsedDate) continue;
-
-    const rowMonthKey = `${parsedDate.year}-${String(parsedDate.month).padStart(2, "0")}`;
-    if (targetMonthKey && rowMonthKey !== targetMonthKey) continue;
+    if (!parsedDate && !parsedDataDate) continue;
 
     const noites = parseInt(row["Noites"] || row["Nights"] || "0", 10) || 1;
     const valor = parseMoney(row["Valor"] || row["Amount"] || row["Pago"] || "0");
@@ -122,7 +128,7 @@ export function parseAirbnbRaw(
     validReservations.push({
       codigo,
       hospede,
-      inicio: parsedDate.formatted,
+      inicio: (parsedDate || parsedDataDate)!.formatted,
       termino: row["Data de término"] || row["End date"] || "",
       noites,
       valor: Math.round(valor * 100) / 100,
