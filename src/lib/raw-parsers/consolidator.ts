@@ -40,33 +40,45 @@ export function consolidateMonthData(
   const monthLabels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
   const mIndex = Math.max(0, Math.min(11, monthNum - 1));
 
-  const diariasAirbnb = airbnbData?.diarias || 0;
-  const diariasBooking = bookingData?.diarias || 0;
-  const totalDiarias = diariasAirbnb + diariasBooking;
+  // Helper to read existing values for this month
+  const getExisting = (id: string): number => {
+    if (!existingData) return 0;
+    const r = existingData.rows.find((x) => x.id === id);
+    const v = r?.values[monthKey];
+    return typeof v === "number" ? v : 0;
+  };
 
-  const checkinsAirbnb = airbnbData?.checkins || 0;
-  const checkinsBooking = bookingData?.checkins || 0;
-  const totalCheckins = checkinsAirbnb + checkinsBooking;
+  const receitaAirbnb = airbnbData ? airbnbData.receitaAirbnb : getExisting("receita_airbnb");
+  const receitaBooking = bookingData ? bookingData.receitaBooking : getExisting("receita_booking");
+  const comissaoBooking = bookingData ? bookingData.comissaoBooking : getExisting("comissao_booking");
+
+  // Sum diarias and checkins preserving the other platform if already imported
+  let totalDiarias = 0;
+  if (airbnbData && bookingData) {
+    totalDiarias = airbnbData.diarias + bookingData.diarias;
+  } else if (airbnbData) {
+    totalDiarias = airbnbData.diarias + (getExisting("receita_booking") > 0 ? Math.max(0, getExisting("diarias") - (existingData ? getExisting("diarias") : 0)) : 0);
+  } else if (bookingData) {
+    totalDiarias = bookingData.diarias + (getExisting("receita_airbnb") > 0 ? Math.max(0, getExisting("diarias")) : 0);
+  } else {
+    totalDiarias = getExisting("diarias");
+  }
+
+  let totalCheckins = 0;
+  if (airbnbData && bookingData) {
+    totalCheckins = airbnbData.checkins + bookingData.checkins;
+  } else if (airbnbData) {
+    totalCheckins = airbnbData.checkins + (getExisting("receita_booking") > 0 ? getExisting("checkins") : 0);
+  } else if (bookingData) {
+    totalCheckins = bookingData.checkins + (getExisting("receita_airbnb") > 0 ? getExisting("checkins") : 0);
+  } else {
+    totalCheckins = getExisting("checkins");
+  }
 
   const ocupacao = diasNoMes > 0 ? Math.round((totalDiarias / diasNoMes) * 10000) / 10000 : 0;
 
-  const receitaAirbnb = airbnbData?.receitaAirbnb || 0;
-  const receitaBooking = bookingData?.receitaBooking || 0;
-  const comissaoBooking = bookingData?.comissaoBooking || 0;
-
-  // Pull existing offsite / pet values if already entered
-  let receitaOffsite = 0;
-  let diariasPet = 0;
-  if (existingData) {
-    const offRow = existingData.rows.find((r) => r.id === "receita_offsite");
-    if (offRow && typeof offRow.values[monthKey] === "number") {
-      receitaOffsite = offRow.values[monthKey] as number;
-    }
-    const petRow = existingData.rows.find((r) => r.id === "diarias_pet");
-    if (petRow && typeof petRow.values[monthKey] === "number") {
-      diariasPet = petRow.values[monthKey] as number;
-    }
-  }
+  const receitaOffsite = getExisting("receita_offsite");
+  const diariasPet = getExisting("diarias_pet");
 
   const faturamentoBruto = Math.round((receitaAirbnb + receitaBooking + receitaOffsite + diariasPet) * 100) / 100;
 
