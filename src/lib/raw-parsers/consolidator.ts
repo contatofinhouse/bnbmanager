@@ -89,8 +89,15 @@ export function consolidateMonthData(
 
   const mediaDiariaHospede =
     totalDiarias > 0 ? Math.round((faturamentoBruto / totalDiarias) * 100) / 100 : 0;
+
+  // For Copan, the historical standard is (Faturamento Bruto + Lavanderia) / Diarias (pré-administração)
+  // For other properties, it matches Receita Líquida / Diárias
   const mediaDiariaLiquido =
-    totalDiarias > 0 ? Math.round((receitaLiquida / totalDiarias) * 100) / 100 : 0;
+    totalDiarias > 0
+      ? propertyId === "copan"
+        ? Math.round(((faturamentoBruto + lavanderia) / totalDiarias) * 100) / 100
+        : Math.round((receitaLiquida / totalDiarias) * 100) / 100
+      : 0;
 
   return {
     monthKey,
