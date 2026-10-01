@@ -91,7 +91,16 @@ export function parseAirbnbRaw(
   const rows = parsed.data as Record<string, string>[];
   if (!rows || rows.length === 0) return null;
 
-  const validReservations: AirbnbReservation[] = [];
+  const rawRows: {
+    tipo: string;
+    codigo: string;
+    hospede: string;
+    inicio: string;
+    termino: string;
+    noites: number;
+    valor: number;
+    anuncio: string;
+  }[] = [];
 
   for (const row of rows) {
     const tipo = (row["Tipo"] || row["\ufeffTipo"] || row["Type"] || "").trim().toLowerCase();
@@ -120,26 +129,68 @@ export function parseAirbnbRaw(
     const parsedDate = parseDateStr(inicioRaw);
     if (!parsedDate && !parsedDataDate) continue;
 
-    const noites = parseInt(row["Noites"] || row["Nights"] || "0", 10) || 1;
+    const noites = parseInt(row["Noites"] || row["Nights"] || "0", 10) || 0;
     const valor = parseMoney(row["Valor"] || row["Amount"] || row["Pago"] || "0");
-    const codigo = row["Código de Confirmação"] || row["Confirmation code"] || row["Código"] || "";
-    const hospede = row["Hóspede"] || row["Guest"] || "";
+    const codigo = (row["Código de Confirmação"] || row["Confirmation code"] || row["Código"] || "").trim();
+    const hospede = (row["Hóspede"] || row["Guest"] || "").trim();
+    const termino = row["Data de término"] || row["End date"] || "";
 
-    validReservations.push({
+    rawRows.push({
+      tipo,
       codigo,
       hospede,
       inicio: (parsedDate || parsedDataDate)!.formatted,
-      termino: row["Data de término"] || row["End date"] || "",
+      termino,
       noites,
       valor: Math.round(valor * 100) / 100,
       anuncio,
     });
   }
 
-  if (validReservations.length === 0) return null;
+  if (rawRows.length === 0) return null;
+
+  // Group rows by confirmation code so that resolution adjustments/payments don't duplicate nights or check-ins
+  const reservationMap = new Map<string, AirbnbReservation & { isActualReservation: boolean }>();
+  let anonIdx = 0;
+
+  for (const item of rawRows) {
+    const key = item.codigo || `_anon_${anonIdx++}`;
+    const isResolution = item.tipo.includes("resolu") || item.tipo.includes("ajuste") || item.tipo.includes("resolution");
+    const isReserva = !isResolution;
+
+    if (!reservationMap.has(key)) {
+      reservationMap.set(key, {
+        codigo: item.codigo,
+        hospede: item.hospede,
+        inicio: item.inicio,
+        termino: item.termino,
+        noites: isReserva ? item.noites : 0,
+        valor: item.valor,
+        anuncio: item.anuncio,
+        isActualReservation: isReserva,
+      });
+    } else {
+      const existing = reservationMap.get(key)!;
+      // Sum all financial transactions for this reservation (resolution payments, adjustments, base payout)
+      existing.valor = Math.round((existing.valor + item.valor) * 100) / 100;
+
+      // When the actual reservation row is encountered, take the true nights and guest info
+      if (isReserva) {
+        existing.noites = item.noites;
+        if (item.hospede) existing.hospede = item.hospede;
+        if (item.inicio) existing.inicio = item.inicio;
+        if (item.termino) existing.termino = item.termino;
+        if (item.anuncio) existing.anuncio = item.anuncio;
+        existing.isActualReservation = true;
+      }
+    }
+  }
+
+  const consolidatedReservations = Array.from(reservationMap.values());
+  if (consolidatedReservations.length === 0) return null;
 
   // Determine target month key
-  const finalMonthKey = targetMonthKey || validReservations[0].inicio.slice(0, 7);
+  const finalMonthKey = targetMonthKey || consolidatedReservations[0].inicio.slice(0, 7);
   const [yearStr, monthStr] = finalMonthKey.split("-");
   const year = parseInt(yearStr, 10);
   const monthNum = parseInt(monthStr, 10);
@@ -149,9 +200,9 @@ export function parseAirbnbRaw(
   const mIndex = Math.max(0, Math.min(11, monthNum - 1));
 
   const diasNoMes = new Date(year, monthNum, 0).getDate();
-  const diarias = validReservations.reduce((acc, r) => acc + r.noites, 0);
-  const checkins = validReservations.length;
-  const receitaAirbnb = Math.round(validReservations.reduce((acc, r) => acc + r.valor, 0) * 100) / 100;
+  const diarias = consolidatedReservations.reduce((acc, r) => acc + r.noites, 0);
+  const checkins = consolidatedReservations.filter((r) => r.isActualReservation || r.noites > 0).length;
+  const receitaAirbnb = Math.round(consolidatedReservations.reduce((acc, r) => acc + r.valor, 0) * 100) / 100;
   const mediaDiariaHospede = diarias > 0 ? Math.round((receitaAirbnb / diarias) * 100) / 100 : 0;
 
   return {
@@ -165,6 +216,6 @@ export function parseAirbnbRaw(
     checkins,
     receitaAirbnb,
     mediaDiariaHospede,
-    reservas: validReservations,
+    reservas: consolidatedReservations.map(({ isActualReservation, ...r }) => r),
   };
 }
