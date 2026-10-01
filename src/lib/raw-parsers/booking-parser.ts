@@ -71,61 +71,136 @@ function parseMoney(val: any): number {
 }
 
 export function parseBookingRaw(
-  fileContent: string,
+  fileContent: string | Record<string, any>[],
   targetPropertyId: string = "copan",
   targetMonthKey?: string // e.g. "2026-08"
 ): BookingMonthlySummary | null {
-  const parsed = Papa.parse(fileContent, {
-    header: true,
-    skipEmptyLines: true,
-  });
+  let rows: Record<string, any>[] = [];
 
-  const rows = parsed.data as Record<string, string>[];
+  if (Array.isArray(fileContent)) {
+    rows = fileContent;
+  } else if (typeof fileContent === "string") {
+    const parsed = Papa.parse(fileContent, {
+      header: true,
+      skipEmptyLines: true,
+    });
+    rows = (parsed.data as Record<string, any>[]) || [];
+  }
+
   if (!rows || rows.length === 0) return null;
 
-  const validReservations: BookingReservation[] = [];
+  const rawRows: BookingReservation[] = [];
 
   for (const row of rows) {
-    const status = (row["Status"] || row["status"] || "").trim().toLowerCase();
-    if (status.includes("cancel") || status.includes("noshow") || status.includes("no_show")) {
+    // 1. Filter out cancelled bookings
+    const status = (
+      row["Estado"] ||
+      row["Status"] ||
+      row["status"] ||
+      row["Situação"] ||
+      ""
+    ).trim().toLowerCase();
+
+    const dataCancelamento = (
+      row["Data de cancelamento"] ||
+      row["Cancellation date"] ||
+      ""
+    ).trim();
+
+    if (
+      status.includes("cancel") ||
+      status.includes("noshow") ||
+      status.includes("no_show") ||
+      status.includes("recusad") ||
+      status.includes("não comparência") ||
+      dataCancelamento !== ""
+    ) {
       continue;
     }
 
-    const entradaRaw = row["Entrada"] || row["Check-in"] || row["Checkin"] || "";
-    const saidaRaw = row["Saída"] || row["Check-out"] || row["Checkout"] || "";
+    // 2. Filter by property / unit type
+    const unidade = (
+      row["Tipo de unidade"] ||
+      row["Unidade"] ||
+      row["Unit type"] ||
+      row["Quarto"] ||
+      row["Acomodação"] ||
+      row["Anúncio"] ||
+      ""
+    ).trim().toLowerCase();
+
+    if (unidade) {
+      if (
+        targetPropertyId === "flatincrivel-320" &&
+        !(unidade.includes("320") || unidade.includes("estúdio") || unidade.includes("estudio") || unidade.includes("1 quarto"))
+      ) {
+        continue;
+      }
+      if (
+        targetPropertyId === "flatincrivel-229" &&
+        !(unidade.includes("229") || unidade.includes("duplex") || unidade.includes("2 quarto"))
+      ) {
+        continue;
+      }
+      if (
+        targetPropertyId === "copan" &&
+        !unidade.includes("copan")
+      ) {
+        continue;
+      }
+    }
+
+    // 3. Dates and month filtering
+    const entradaRaw = row["Check-in"] || row["Checkin"] || row["Entrada"] || "";
+    const saidaRaw = row["Check-out"] || row["Checkout"] || row["Saída"] || "";
 
     const parsedEntrada = parseDateStr(entradaRaw);
     const parsedSaida = parseDateStr(saidaRaw);
-    if (!parsedEntrada) continue;
+    if (!parsedEntrada && !parsedSaida) continue;
 
-    const rowMonthKey = `${parsedEntrada.year}-${String(parsedEntrada.month).padStart(2, "0")}`;
-    if (targetMonthKey && rowMonthKey !== targetMonthKey) continue;
+    if (targetMonthKey) {
+      const entradaKey = parsedEntrada ? `${parsedEntrada.year}-${String(parsedEntrada.month).padStart(2, "0")}` : "";
+      const saidaKey = parsedSaida ? `${parsedSaida.year}-${String(parsedSaida.month).padStart(2, "0")}` : "";
+      if (entradaKey !== targetMonthKey && saidaKey !== targetMonthKey) {
+        continue;
+      }
+    }
 
-    // Calculate nights
-    let noites = 1;
-    if (parsedSaida) {
-      const d1 = new Date(parsedEntrada.year, parsedEntrada.month - 1, parsedEntrada.day);
-      const d2 = new Date(parsedSaida.year, parsedSaida.month - 1, parsedSaida.day);
-      const diffDays = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
-      if (diffDays > 0) noites = diffDays;
+    // 4. Calculate nights
+    let noites = parseInt(row["Duração (noites)"] || row["Duração"] || row["Noites"] || row["Nights"] || "0", 10);
+    if (!noites || noites <= 0) {
+      if (parsedEntrada && parsedSaida) {
+        const d1 = new Date(parsedEntrada.year, parsedEntrada.month - 1, parsedEntrada.day);
+        const d2 = new Date(parsedSaida.year, parsedSaida.month - 1, parsedSaida.day);
+        const diffDays = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+        noites = diffDays > 0 ? diffDays : 1;
+      } else {
+        noites = 1;
+      }
     }
 
     const preco = parseMoney(row["Preço"] || row["Price"] || row["Total"] || "0");
-    const comissaoPercent = parseMoney(row["Comissão %"] || row["Commission %"] || "14");
+    const comissaoPercent = parseMoney(row["Comissão (%)"] || row["Comissão %"] || row["Commission %"] || "16");
     let comissaoValor = parseMoney(row["Valor da comissão"] || row["Commission Amount"] || "0");
 
     if (comissaoValor === 0 && preco > 0 && comissaoPercent > 0) {
       comissaoValor = (preco * comissaoPercent) / 100;
     }
 
-    const numero = row["Número da reserva"] || row["Book Number"] || row["Reserva"] || "";
-    const hospede = row["Nome(s) do(s) hóspede(s)"] || row["Guest Name(s)"] || row["Reservado por"] || "";
+    const numero = String(row["Número da reserva"] || row["Book Number"] || row["Reserva"] || "").trim();
+    const hospede = String(
+      row["Nome do hóspede"] ||
+      row["Nome(s) do(s) hóspede(s)"] ||
+      row["Guest Name(s)"] ||
+      row["Reservado por"] ||
+      ""
+    ).trim();
 
-    validReservations.push({
+    rawRows.push({
       numero,
       hospede,
-      entrada: parsedEntrada.formatted,
-      saida: parsedSaida ? parsedSaida.formatted : parsedEntrada.formatted,
+      entrada: parsedEntrada ? parsedEntrada.formatted : parsedSaida!.formatted,
+      saida: parsedSaida ? parsedSaida.formatted : parsedEntrada!.formatted,
       noites,
       status: status || "ok",
       preco: Math.round(preco * 100) / 100,
@@ -134,9 +209,25 @@ export function parseBookingRaw(
     });
   }
 
-  if (validReservations.length === 0) return null;
+  if (rawRows.length === 0) return null;
 
-  const finalMonthKey = targetMonthKey || validReservations[0].entrada.slice(0, 7);
+  // Deduplicate by reservation number so the same booking is only counted once
+  const bookingMap = new Map<string, BookingReservation>();
+  let anonIdx = 0;
+  for (const item of rawRows) {
+    const key = item.numero || `_anon_${anonIdx++}`;
+    if (!bookingMap.has(key)) {
+      bookingMap.set(key, { ...item });
+    } else {
+      const existing = bookingMap.get(key)!;
+      existing.preco = Math.round((existing.preco + item.preco) * 100) / 100;
+      existing.comissaoValor = Math.round((existing.comissaoValor + item.comissaoValor) * 100) / 100;
+    }
+  }
+
+  const validReservations = Array.from(bookingMap.values());
+
+  const finalMonthKey = targetMonthKey || validReservations[0].saida.slice(0, 7) || validReservations[0].entrada.slice(0, 7);
   const [yearStr, monthStr] = finalMonthKey.split("-");
   const year = parseInt(yearStr, 10);
   const monthNum = parseInt(monthStr, 10);

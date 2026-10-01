@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { X, UploadCloud, FileText, CheckCircle2, AlertCircle, Building2, Layers } from "lucide-react";
+import * as XLSX from "xlsx";
 import { parseAirbnbRaw, AirbnbMonthlySummary } from "@/lib/raw-parsers/airbnb-parser";
 import { parseBookingRaw, BookingMonthlySummary } from "@/lib/raw-parsers/booking-parser";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
@@ -29,6 +30,7 @@ export function UploadModal({
   const [dragActive, setDragActive] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [rawCsvText, setRawCsvText] = useState<string | null>(null);
 
   const [parsedAirbnb, setParsedAirbnb] = useState<AirbnbMonthlySummary | null>(null);
   const [parsedBooking, setParsedBooking] = useState<BookingMonthlySummary | null>(null);
@@ -38,61 +40,105 @@ export function UploadModal({
 
   if (!isOpen) return null;
 
-  const handleFile = (file: File) => {
+  const parseContent = (text: string, propId: string, month: string) => {
     setError(null);
-    setFileName(file.name);
     setParsedAirbnb(null);
     setParsedBooking(null);
     setDetectedPlatform(null);
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      if (!text) {
+    const lower = text.toLowerCase();
+    const isAirbnb =
+      lower.includes("confirmação") ||
+      lower.includes("confirmation") ||
+      lower.includes("anúncio") ||
+      lower.includes("listing") ||
+      lower.includes("payout");
+
+    const isBooking =
+      lower.includes("número da reserva") ||
+      lower.includes("book number") ||
+      lower.includes("reservado por") ||
+      lower.includes("tipo de unidade") ||
+      lower.includes("unit type") ||
+      lower.includes("comissão") ||
+      lower.includes("booking");
+
+    if (isAirbnb && !isBooking) {
+      const res = parseAirbnbRaw(text, propId, month || undefined);
+      if (res && res.reservas.length > 0) {
+        setParsedAirbnb(res);
+        setDetectedPlatform("airbnb");
+        if (!targetMonth) setTargetMonth(res.monthKey);
+      } else {
+        setError(`Nenhuma reserva encontrada para o imóvel ${propId} no arquivo do Airbnb.`);
+      }
+    } else if (isBooking && !isAirbnb) {
+      const res = parseBookingRaw(text, propId, month || undefined);
+      if (res && res.reservas.length > 0) {
+        setParsedBooking(res);
+        setDetectedPlatform("booking");
+        if (!targetMonth) setTargetMonth(res.monthKey);
+      } else {
+        setError(`Nenhuma reserva válida encontrada para o imóvel ${propId} no arquivo da Booking.com.`);
+      }
+    } else {
+      // Heuristic fallback
+      const bookingTry = parseBookingRaw(text, propId, month || undefined);
+      if (bookingTry && bookingTry.reservas.length > 0) {
+        setParsedBooking(bookingTry);
+        setDetectedPlatform("booking");
+      } else {
+        const airbnbTry = parseAirbnbRaw(text, propId, month || undefined);
+        if (airbnbTry && airbnbTry.reservas.length > 0) {
+          setParsedAirbnb(airbnbTry);
+          setDetectedPlatform("airbnb");
+        } else {
+          setError(`Nenhuma reserva encontrada para o imóvel selecionado (${propId}).`);
+        }
+      }
+    }
+  };
+
+  const handleFile = async (file: File) => {
+    setError(null);
+    setFileName(file.name);
+
+    try {
+      let text = "";
+      const isExcel = file.name.endsWith(".xls") || file.name.endsWith(".xlsx");
+      if (isExcel) {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: "array" });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        text = XLSX.utils.sheet_to_csv(firstSheet);
+      } else {
+        text = await file.text();
+      }
+
+      if (!text || !text.trim()) {
         setError("Arquivo vazio ou ilegível.");
         return;
       }
 
-      const lower = text.toLowerCase();
-      // Heuristic detection: Airbnb vs Booking
-      if (lower.includes("confirmação") || lower.includes("confirmation") || lower.includes("anúncio") || lower.includes("listing")) {
-        // Airbnb
-        const res = parseAirbnbRaw(text, selectedProp, targetMonth || undefined);
-        if (res && res.reservas.length > 0) {
-          setParsedAirbnb(res);
-          setDetectedPlatform("airbnb");
-          if (!targetMonth) setTargetMonth(res.monthKey);
-        } else {
-          setError(`Nenhuma reserva encontrada para o imóvel ${selectedProp} no arquivo do Airbnb.`);
-        }
-      } else if (lower.includes("reserva") || lower.includes("booking") || lower.includes("check-in") || lower.includes("comissão") || lower.includes("commission")) {
-        // Booking
-        const res = parseBookingRaw(text, selectedProp, targetMonth || undefined);
-        if (res && res.reservas.length > 0) {
-          setParsedBooking(res);
-          setDetectedPlatform("booking");
-          if (!targetMonth) setTargetMonth(res.monthKey);
-        } else {
-          setError(`Nenhuma reserva válida encontrada no arquivo da Booking.com.`);
-        }
-      } else {
-        // Try airbnb fallback then booking fallback
-        const airbnbTry = parseAirbnbRaw(text, selectedProp, targetMonth || undefined);
-        if (airbnbTry) {
-          setParsedAirbnb(airbnbTry);
-          setDetectedPlatform("airbnb");
-        } else {
-          const bookingTry = parseBookingRaw(text, selectedProp, targetMonth || undefined);
-          if (bookingTry) {
-            setParsedBooking(bookingTry);
-            setDetectedPlatform("booking");
-          } else {
-            setError("Não foi possível identificar o formato como relatório de reservas do Airbnb ou Booking. Verifique o cabeçalho do arquivo CSV.");
-          }
-        }
-      }
-    };
-    reader.readAsText(file);
+      setRawCsvText(text);
+      parseContent(text, selectedProp, targetMonth);
+    } catch (err: any) {
+      setError("Erro ao ler arquivo: " + err.message);
+    }
+  };
+
+  const handlePropertyChange = (newProp: string) => {
+    setSelectedProp(newProp);
+    if (rawCsvText) {
+      parseContent(rawCsvText, newProp, targetMonth);
+    }
+  };
+
+  const handleMonthChange = (newMonth: string) => {
+    setTargetMonth(newMonth);
+    if (rawCsvText) {
+      parseContent(rawCsvText, selectedProp, newMonth);
+    }
   };
 
   const handleConfirm = () => {
@@ -131,7 +177,7 @@ export function UploadModal({
             </label>
             <select
               value={selectedProp}
-              onChange={(e) => setSelectedProp(e.target.value)}
+              onChange={(e) => handlePropertyChange(e.target.value)}
               className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-xs text-zinc-900 shadow-2xs focus:border-zinc-950 focus:outline-hidden"
             >
               {PROPERTIES.map((p) => (
@@ -150,7 +196,7 @@ export function UploadModal({
               type="text"
               placeholder="YYYY-MM (ex: 2026-08)"
               value={targetMonth}
-              onChange={(e) => setTargetMonth(e.target.value)}
+              onChange={(e) => handleMonthChange(e.target.value)}
               className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-xs text-zinc-900 shadow-2xs focus:border-zinc-950 focus:outline-hidden"
             />
           </div>
@@ -181,7 +227,7 @@ export function UploadModal({
             <input
               ref={inputRef}
               type="file"
-              accept=".csv,.txt"
+              accept=".csv,.txt,.xls,.xlsx"
               className="hidden"
               onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
             />
@@ -189,10 +235,10 @@ export function UploadModal({
               <UploadCloud className="h-6 w-6 text-zinc-700" />
             </div>
             <p className="mt-2.5 text-xs font-semibold text-zinc-900">
-              Arraste o arquivo CSV bruto aqui ou clique para selecionar
+              Arraste o relatório bruto aqui (.csv, .xls, .xlsx) ou clique para selecionar
             </p>
             <p className="mt-1 text-[11px] text-zinc-500">
-              Suporta relatórios originais de pagamentos do Airbnb e reservas da Booking.com
+              Suporta relatórios originais do Airbnb (.csv) e Booking.com (.xls, .xlsx, .csv)
             </p>
           </div>
         </div>
