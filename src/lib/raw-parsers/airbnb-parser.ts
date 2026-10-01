@@ -56,10 +56,24 @@ function parseDateStr(str: string): { year: number; month: number; day: number; 
 function parseMoney(val: any): number {
   if (typeof val === "number") return val;
   if (!val) return 0;
-  const s = String(val)
-    .replace(/[R$\s]/g, "")
-    .replace(/\./g, "")
-    .replace(",", ".");
+  let s = String(val).replace(/[R$\s]/g, "").trim();
+  if (!s) return 0;
+
+  // Detect format: American (1,234.56) vs Brazilian (1.234,56)
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+
+  if (lastDot > lastComma) {
+    // American format: dots are decimal, commas are thousands
+    // e.g. "1,234.56" or "368.04"
+    s = s.replace(/,/g, "");
+  } else if (lastComma > lastDot) {
+    // Brazilian format: commas are decimal, dots are thousands
+    // e.g. "1.234,56" or "81,96"
+    s = s.replace(/\./g, "").replace(",", ".");
+  }
+  // If neither or equal position, just parse as-is
+
   const num = parseFloat(s);
   return isNaN(num) ? 0 : num;
 }
@@ -89,8 +103,8 @@ export function parseAirbnbRaw(
     if (anuncio) {
       const aLower = anuncio.toLowerCase();
       if (targetPropertyId === "copan" && !aLower.includes("copan")) continue;
-      if (targetPropertyId === "flatincrivel-320" && !aLower.includes("320") && !aLower.includes("riviera")) continue;
-      if (targetPropertyId === "flatincrivel-229" && !aLower.includes("229") && !aLower.includes("riviera")) continue;
+      if (targetPropertyId === "flatincrivel-320" && !aLower.includes("piscina climatizada")) continue;
+      if (targetPropertyId === "flatincrivel-229" && !(aLower.includes("229") || aLower.includes("duplex") || aLower.includes("flat incrível"))) continue;
     }
 
     const inicioRaw = row["Data de início"] || row["Start date"] || row["Entrada"] || "";

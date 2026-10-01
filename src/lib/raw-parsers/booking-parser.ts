@@ -51,10 +51,21 @@ function parseDateStr(str: string): { year: number; month: number; day: number; 
 function parseMoney(val: any): number {
   if (typeof val === "number") return val;
   if (!val) return 0;
-  const s = String(val)
-    .replace(/[BRLR$\s]/g, "")
-    .replace(/\./g, "")
-    .replace(",", ".");
+  let s = String(val).replace(/[BRLR$\s]/g, "").trim();
+  if (!s) return 0;
+
+  // Detect format: American (1,234.56) vs Brazilian (1.234,56)
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+
+  if (lastDot > lastComma) {
+    // American format: dots are decimal, commas are thousands
+    s = s.replace(/,/g, "");
+  } else if (lastComma > lastDot) {
+    // Brazilian format: commas are decimal, dots are thousands
+    s = s.replace(/\./g, "").replace(",", ".");
+  }
+
   const num = parseFloat(s);
   return isNaN(num) ? 0 : num;
 }

@@ -25,7 +25,7 @@ export function UploadModal({
   onApplyRawImport,
 }: UploadModalProps) {
   const [selectedProp, setSelectedProp] = useState(activePropertyId);
-  const [targetMonth, setTargetMonth] = useState("2026-08");
+  const [targetMonth, setTargetMonth] = useState("2026-09");
   const [dragActive, setDragActive] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
