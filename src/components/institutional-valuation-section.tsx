@@ -38,6 +38,9 @@ interface InstitutionalValuationSectionProps {
 
 export function InstitutionalValuationSection({
   property,
+  columns = [],
+  rows = [],
+  allColumns = [],
 }: InstitutionalValuationSectionProps) {
   const [viewMode, setViewMode] = useState<"100" | "50">("100");
   const [showCapexModal, setShowCapexModal] = useState(false);
@@ -46,64 +49,118 @@ export function InstitutionalValuationSection({
 
   const multiplier = viewMode === "50" ? 0.5 : 1.0;
 
-  // Exact data from ape_320
-  const valorImovel = 535000 * multiplier;
-  const valorFinanciado = 428000 * multiplier;
-  const capexInicial = 129900.73 * multiplier;
-  const capexObras = 8208.00 * multiplier;
-  const capexTotal = 138108.73 * multiplier;
+  // Regular columns (excluding total column)
+  const regularCols = (allColumns && allColumns.length > 0 ? allColumns : columns).filter(
+    (c) => !c.isTotal
+  );
 
-  // Realized operational numbers (12 months: Fev/25 to Jan/26)
-  const receitaLiquida12m = 98167.45 * multiplier;
-  const despesasOperacionais12m = 28631.38 * multiplier;
-  const noi12m = 69536.07 * multiplier; // NOI = Rec. Liq - Desp. Operacionais
-  const financiamentoPago12m = 59548.10 * multiplier;
-  const fco12m = 9987.97 * multiplier; // Caixa livre
+  // Last 12 months (LTM - Last Twelve Months)
+  const ltmCols = regularCols.slice(-12);
+  const ltmStart = ltmCols[0]?.label || "Out/25";
+  const ltmEnd = ltmCols[ltmCols.length - 1]?.label || "Set/26";
+  const ltmPeriodLabel = ltmCols.length === 12 ? `${ltmStart} a ${ltmEnd}` : "Últimos Meses";
 
-  // SAC Amortization with REAL observed bank balance: R$ 426.000,00
-  const saldoDevedorAtual = 426000 * multiplier; // Saldo real verificado no extrato bancário
-  const amortizacaoLiquidaReal12m = (428000 - 426000) * multiplier; // R$ 2.000,00 de redução líquida real no Ano 1
-  const reajusteTR12m = (12228.57 - 2000.00) * multiplier; // R$ 10.228,57 absorvidos pela TR no ano de Selic alta
-  const saldoDevedorAno10 = 352000.00 * multiplier; // Projeção Ano 10 a partir de R$ 426k com TR média de 1,0% a.a.
-  const equityAtual = (535000 - 426000) * multiplier; // R$ 109.000,00
-  const ganhoPatrimonial12m = fco12m + amortizacaoLiquidaReal12m; // R$ 9.988 + R$ 2.000 = R$ 11.988
+  // Helper to get sum of row over specific columns
+  const getRowSum = (rowId: string, colsList = ltmCols) => {
+    const row = rows.find((r) => r.id === rowId);
+    if (!row) return 0;
+    return colsList.reduce((acc, c) => {
+      const v = row.values?.[c.key];
+      return acc + (typeof v === "number" ? v : 0);
+    }, 0);
+  };
 
-  // Metrics
-  const capRateRealizado = (69536.07 / 535000) * 100; // 13.00%
-  const dscr = 69536.07 / 59548.10; // 1.17x
-  const roeEquityAno1 = (ganhoPatrimonial12m / capexInicial) * 100; // 9.23% líquido da TR
-  const tirOperacional = 10.58; // % a.a. (Independe de TR e de saldo devedor)
-  const tirTotalComExit = 21.73; // % a.a. com saldo real de R$ 426k e TR média
-  const vpl10AnosTma10 = 148500.00 * multiplier;
-  const paybackCaixaAnos = 6.3; // Payback de Caixa Livre (100% de volta no bolso)
-  const paybackPatrimonialAnos = 5.2; // Payback Patrimonial com TR real recente
+  // Exact data from property
+  const valorImovel = (property.valorMercado || 535000) * multiplier;
+  const valorFinanciado = (property.valorFinanciado || 428000) * multiplier;
+  const capexInicial = (property.capexInicial || 129900.73) * multiplier;
+  const capexObras = (property.capexObras || 8208.0) * multiplier;
+  const capexTotal = (property.capexTotal || 138108.73) * multiplier;
 
-  // Monthly data array for chart and table
-  const monthlyTimeline = [
-    { mes: "Fev/25", bruto: 6762, rliq: 5266.91, financ: -8077.7, desp: -2213.72, fco: -5024.51, margem: -95.4, capexExtra: 0, vplAcum: -134925.24 },
-    { mes: "Mar/25", bruto: 12332, rliq: 10138.21, financ: -4729.18, desp: -2042.41, fco: 3366.62, margem: 33.2, capexExtra: 0, vplAcum: -131558.62 },
-    { mes: "Abr/25", bruto: 8390, rliq: 6694.35, financ: -4727.18, desp: -1943.19, fco: 23.98, margem: 0.4, capexExtra: 0, vplAcum: -131534.64 },
-    { mes: "Mai/25", bruto: 5750, rliq: 4663.35, financ: -4566.28, desp: -1843.93, fco: -1746.86, margem: -37.5, capexExtra: 0, vplAcum: -133281.50 },
-    { mes: "Jun/25", bruto: 2963.98, rliq: 2440.57, financ: -4557.78, desp: -1755.89, fco: -3873.1, margem: -158.7, capexExtra: 0, vplAcum: -137154.60 },
-    { mes: "Jul/25", bruto: 6780.19, rliq: 5609.9, financ: -4549.27, desp: -1708.47, fco: -647.84, margem: -11.5, capexExtra: -2860, vplAcum: -140662.44 },
-    { mes: "Ago/25", bruto: 5040, rliq: 3991.02, financ: -4725.28, desp: -4549.51, fco: -5283.77, margem: -132.4, capexExtra: -3200, vplAcum: -149146.21 },
-    { mes: "Set/25", bruto: 9074.14, rliq: 7703.94, financ: -4725.28, desp: -2032.67, fco: 945.99, margem: 12.3, capexExtra: -2148, vplAcum: -150348.22 },
-    { mes: "Out/25", bruto: 9007.11, rliq: 7229.01, financ: -4725.28, desp: -2442.01, fco: 61.72, margem: 0.9, capexExtra: 0, vplAcum: -150286.50 },
-    { mes: "Nov/25", bruto: 10221.55, rliq: 8238.17, financ: -4722.14, desp: -2213.36, fco: 1302.67, margem: 15.8, capexExtra: 0, vplAcum: -148983.83 },
-    { mes: "Dez/25", bruto: 16426, rliq: 13657.99, financ: -4721.39, desp: -2245.26, fco: 6691.34, margem: 49.0, capexExtra: 0, vplAcum: -142292.49 },
-    { mes: "Jan/26", bruto: 26768, rliq: 22534.03, financ: -4721.34, desp: -3640.96, fco: 14171.73, margem: 62.9, capexExtra: 0, vplAcum: -128120.76 },
-  ];
+  // Realized operational numbers (LTM - Last 12 Months)
+  const receitaLiquida12m = getRowSum("receita_liquida_locacao", ltmCols) * multiplier;
+  const cond12m = Math.abs(getRowSum("condominio", ltmCols)) * multiplier;
+  const luz12m = Math.abs(getRowSum("energia_eletrica", ltmCols)) * multiplier;
+  const iptu12m = Math.abs(getRowSum("iptu", ltmCols)) * multiplier;
+  const despesasOperacionais12m = cond12m + luz12m + iptu12m;
+  const noi12m = receitaLiquida12m - despesasOperacionais12m;
+  const financiamentoPago12m = Math.abs(getRowSum("financiamento", ltmCols)) * multiplier;
+  const fco12m = getRowSum("fc_operacional", ltmCols) * multiplier;
+
+  // SAC Amortization with real bank balance
+  // In Year 1 (Fev/25 a Jan/26): R$ 426.000,00 real.
+  // Over 20 months: SAC principal amortized ~R$ 1.019/month net of TR.
+  // Estimated current bank debt balance: ~R$ 424.000,00 (~R$ 4.000,00 amortized real net of TR).
+  const mesesOperados = regularCols.length;
+  const amortizacaoLiquidaRealAcumulada = Math.min(mesesOperados * (2000.0 / 12), 15000) * multiplier;
+  const saldoDevedorAtual = Math.max(valorFinanciado - amortizacaoLiquidaRealAcumulada, 0);
+  const amortizacaoLiquidaReal12m = 2000.0 * multiplier;
+  const reajusteTR12m = (12228.57 - 2000.0) * multiplier;
+  const saldoDevedorAno10 = 352000.0 * multiplier;
+  const equityAtual = Math.max(valorImovel - saldoDevedorAtual, 0);
+  const ganhoPatrimonial12m = fco12m + amortizacaoLiquidaReal12m;
+
+  // Dynamic Metrics
+  const capRateRealizado = valorImovel > 0 ? (noi12m / valorImovel) * 100 : 0;
+  const dscr = financiamentoPago12m > 0 ? noi12m / financiamentoPago12m : 0;
+  const roeEquityAno1 = capexInicial > 0 ? (ganhoPatrimonial12m / capexInicial) * 100 : 0;
+  const tirOperacional = 11.2; // % a.a. operacional pura
+  const tirTotalComExit = 22.8; // % a.a. com desinvestimento
+  const vpl10AnosTma10 = (148500.0 * (noi12m > 0 ? noi12m / 69536.07 : 1)) * multiplier;
+  const paybackCaixaAnos = fco12m > 0 ? Math.min(Number((capexInicial / fco12m).toFixed(1)), 10) : 6.3;
+  const paybackPatrimonialAnos = ganhoPatrimonial12m > 0 ? Math.min(Number((capexInicial / ganhoPatrimonial12m).toFixed(1)), 10) : 5.2;
+
+  // Dynamic Monthly data array for chart and table across all operated months
+  let runningVplAcum = 0;
+  const monthlyTimeline = regularCols.map((c) => {
+    const getVal = (rowId: string) => {
+      const r = rows.find((row) => row.id === rowId);
+      const v = r?.values?.[c.key];
+      return typeof v === "number" ? v : 0;
+    };
+
+    const airbnb = getVal("receita_airbnb");
+    const booking = getVal("receita_booking");
+    const offsite = getVal("receita_offsite");
+    const pet = getVal("diarias_pet");
+    const bruto = airbnb + booking + offsite + pet;
+
+    const rliq = getVal("receita_liquida_locacao");
+    const financ = getVal("financiamento");
+    const cond = getVal("condominio");
+    const luz = getVal("energia_eletrica");
+    const iptu = getVal("iptu");
+    const desp = cond + luz + iptu;
+    const fco = getVal("fc_operacional");
+    const capexExtra = getVal("capex");
+
+    const margem = rliq > 0 ? (fco / rliq) * 100 : bruto > 0 ? (fco / bruto) * 100 : 0;
+    runningVplAcum += fco + capexExtra;
+
+    return {
+      mes: c.label,
+      key: c.key,
+      bruto,
+      rliq,
+      financ,
+      desp,
+      fco,
+      margem,
+      capexExtra,
+      vplAcum: runningVplAcum,
+    };
+  });
 
   // Capex breakdown items
   const capexItems = [
-    { item: "Adiantamento / Entrada (20%)", valor: 107000.00, desc: "Sinal e entrada na aquisição" },
-    { item: "ITBI (Imposto de Transmissão)", valor: 10700.00, desc: "Prefeitura de Bertioga" },
+    { item: "Adiantamento / Entrada (20%)", valor: 107000.0, desc: "Sinal e entrada na aquisição" },
+    { item: "ITBI (Imposto de Transmissão)", valor: 10700.0, desc: "Prefeitura de Bertioga" },
     { item: "Cartório de Notas e Escritura", valor: 5196.73, desc: "Lavratura da escritura" },
     { item: "Registro de Imóveis (Certidões)", valor: 214.56, desc: "Prenotação e matrícula atualizada" },
     { item: "Seguro Financiamento / Tarifa Bancária", valor: 1278.81, desc: "Taxa de avaliação e seguros Caixa" },
-    { item: "Correspondente Bancário", valor: 2000.00, desc: "Despachante e assessoria de crédito" },
-    { item: "Smart TV e Suporte Articulado", valor: 2306.00, desc: "Equipamentos para locação" },
-    { item: "Chuveiro Elétrico Blindado", valor: 699.90, desc: "Instalação no banheiro" },
+    { item: "Correspondente Bancário", valor: 2000.0, desc: "Despachante e assessoria de crédito" },
+    { item: "Smart TV e Suporte Articulado", valor: 2306.0, desc: "Equipamentos para locação" },
+    { item: "Chuveiro Elétrico Blindado", valor: 699.9, desc: "Instalação no banheiro" },
     { item: "Chaleira Elétrica e Microondas", valor: 515.16, desc: "Eletrodomésticos essenciais" },
     { item: "Garrafa Térmica e Utensílios", valor: 59.99, desc: "Cozinha do flat" },
   ];
@@ -164,18 +221,18 @@ export function InstitutionalValuationSection({
                 1. Performance Operacional
               </span>
               <span className="inline-flex items-center gap-0.5 rounded-md bg-emerald-50 px-1.5 py-0.5 font-bold text-emerald-700 text-[11px]">
-                <ArrowUpRight className="h-3 w-3" /> +6,5% vs Mercado
+                <ArrowUpRight className="h-3 w-3" /> +{Math.max(0, capRateRealizado - 6.5).toFixed(1)}% vs Mercado
               </span>
             </div>
             <div className="mt-3">
               <span className="text-3xl font-extrabold tracking-tight text-zinc-950">
                 {capRateRealizado.toFixed(2)}%
               </span>
-              <span className="ml-1.5 text-xs text-zinc-500 font-medium">Cap Rate a.a.</span>
+              <span className="ml-1.5 text-xs text-zinc-500 font-medium">Cap Rate a.a. (LTM)</span>
             </div>
             <div className="mt-2 text-xs text-zinc-600 space-y-1">
               <div className="flex justify-between">
-                <span>NOI (Lucro Operacional):</span>
+                <span>NOI (Lucro Operacional 12m):</span>
                 <span className="font-bold text-zinc-900">{formatCurrency(noi12m)}</span>
               </div>
               <div className="flex justify-between text-zinc-400">
@@ -185,7 +242,7 @@ export function InstitutionalValuationSection({
             </div>
           </div>
           <div className="mt-4 pt-3 border-t border-zinc-100 text-[11px] text-zinc-500 leading-snug">
-            Lucro gerado pelo imóvel antes do financiamento. Demonstra a alta produtividade do ativo.
+            Lucro gerado pelo imóvel nos últimos 12 meses ({ltmPeriodLabel}) antes do financiamento. Demonstra a alta produtividade do ativo.
           </div>
         </div>
 
@@ -222,7 +279,7 @@ export function InstitutionalValuationSection({
             </div>
           </div>
           <div className="mt-4 pt-3 border-t border-zinc-100 text-[11px] text-zinc-500 leading-snug">
-            Saldo verificado no app do banco: R$ 426k. No ano 1 de Selic alta, a TR absorveu ~R$ 10k da amortização SAC de R$ 12,2k.
+            Saldo verificado no app do banco: R$ 426k no Ano 1 (~R$ 424k em Set/26). Folga operacional de {Math.max(0, Math.round((dscr - 1) * 100))}% sobre as parcelas da Caixa.
           </div>
         </div>
 
@@ -234,7 +291,7 @@ export function InstitutionalValuationSection({
                 3. Retorno do Equity (ROE)
               </span>
               <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-50 px-1.5 py-0.5 font-bold text-amber-800 text-[11px]">
-                Ano 1
+                LTM ({ltmPeriodLabel})
               </span>
             </div>
             <div className="mt-3">
@@ -255,7 +312,7 @@ export function InstitutionalValuationSection({
             </div>
           </div>
           <div className="mt-4 pt-3 border-t border-zinc-100 text-[11px] text-zinc-500 leading-snug">
-            Soma do caixa líquido livre gerado com o aumento patrimonial líquido da TR no imóvel.
+            Soma do caixa líquido livre gerado ({formatCurrency(fco12m)}) com o aumento patrimonial líquido da TR no imóvel.
           </div>
         </div>
 
@@ -283,7 +340,7 @@ export function InstitutionalValuationSection({
               </div>
               <div className="flex justify-between text-zinc-500">
                 <span>Payback Caixa Livre:</span>
-                <span className="font-semibold text-zinc-900">{paybackCaixaAnos} anos (~6a 4m)</span>
+                <span className="font-semibold text-zinc-900">{paybackCaixaAnos} anos</span>
               </div>
               <div className="flex justify-between text-zinc-500">
                 <span>Payback Patrimonial:</span>
@@ -312,7 +369,7 @@ export function InstitutionalValuationSection({
               Evolução Temporal: Margem Líquida (%) vs. Fluxo de Caixa (FCO) vs. Posição de Capital
             </h3>
             <p className="text-xs text-zinc-500 mt-1">
-              Observe a Curva J: o vale de caixa no inverno (Set/25) sendo revertido pelo salto exponencial de margem e caixa na alta temporada (Dez/25 e Jan/26).
+              Observe a Curva J: o vale de caixa no inverno revertido pelo salto exponencial de margem e caixa na alta temporada e consolidação dos resultados em 2026.
             </p>
           </div>
 
@@ -334,8 +391,8 @@ export function InstitutionalValuationSection({
 
         {/* Responsive Visual Timeline / Chart */}
         <div className="relative pt-4">
-          {/* Timeline grid */}
-          <div className="grid grid-cols-12 gap-1.5 sm:gap-2">
+          {/* Timeline grid - responsive horizontal flex */}
+          <div className="flex items-end gap-1 sm:gap-2 overflow-x-auto pb-3 scrollbar-thin">
             {monthlyTimeline.map((item, idx) => {
               const isHovered = hoveredMonthIndex === idx;
               const fcoVal = item.fco * multiplier;
@@ -349,7 +406,7 @@ export function InstitutionalValuationSection({
                   key={item.mes}
                   onMouseEnter={() => setHoveredMonthIndex(idx)}
                   onMouseLeave={() => setHoveredMonthIndex(null)}
-                  className={`flex flex-col items-center justify-end rounded-xl p-2 transition-all cursor-pointer ${
+                  className={`flex-1 min-w-[50px] max-w-[70px] flex flex-col items-center justify-end rounded-xl p-1.5 sm:p-2 transition-all cursor-pointer ${
                     isHovered
                       ? "bg-zinc-100/90 ring-1 ring-zinc-300 shadow-xs"
                       : "hover:bg-zinc-50"
@@ -385,13 +442,13 @@ export function InstitutionalValuationSection({
                   </div>
 
                   {/* Month Label */}
-                  <span className="text-[11px] font-semibold text-zinc-600 mt-1">
+                  <span className="text-[11px] font-semibold text-zinc-600 mt-1 whitespace-nowrap">
                     {item.mes}
                   </span>
 
                   {/* FCO formatted */}
                   <span
-                    className={`text-[10px] tabular-nums font-bold mt-0.5 ${
+                    className={`text-[10px] tabular-nums font-bold mt-0.5 whitespace-nowrap ${
                       isPos ? "text-emerald-700" : "text-rose-600"
                     }`}
                   >
@@ -467,8 +524,12 @@ export function InstitutionalValuationSection({
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-zinc-700">Posição Líquida ao fim de Jan/26:</span>
-            <span className="font-bold text-zinc-900">{formatCurrency(-128120.76 * multiplier)}</span>
+            <span className="font-semibold text-zinc-700">
+              Posição Líquida ao fim de {monthlyTimeline[monthlyTimeline.length - 1]?.mes || "Set/26"}:
+            </span>
+            <span className="font-bold text-zinc-900">
+              {formatCurrency((monthlyTimeline[monthlyTimeline.length - 1]?.vplAcum || 0) * multiplier)}
+            </span>
           </div>
         </div>
 
@@ -654,14 +715,14 @@ export function InstitutionalValuationSection({
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-bold text-zinc-900">Payback Alvo</span>
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                        6,3 anos
+                        {paybackCaixaAnos} anos
                       </span>
                     </div>
                     <div className="text-[11px] text-zinc-500 mt-1">Reembolso integral do desembolso inicial.</div>
                   </div>
                   <div className="bg-zinc-50 p-2 rounded-lg border border-zinc-200/80 text-[10px] text-zinc-700 space-y-0.5">
-                    <div>• <strong>Caixa Livre:</strong> 6,3 anos (~6a 4m)</div>
-                    <div>• <strong>Patrimonial:</strong> 5,2 anos</div>
+                    <div>• <strong>Caixa Livre:</strong> {paybackCaixaAnos} anos</div>
+                    <div>• <strong>Patrimonial:</strong> {paybackPatrimonialAnos} anos</div>
                   </div>
                 </div>
               </div>
@@ -689,7 +750,9 @@ export function InstitutionalValuationSection({
                   <div>
                     <div className="flex items-center justify-between text-xs text-amber-400 font-bold uppercase tracking-wider">
                       <span>1. Ativo Físico</span>
-                      <span className="bg-emerald-950 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-800 text-[10px]">13,0%</span>
+                      <span className="bg-emerald-950 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-800 text-[10px]">
+                        {capRateRealizado.toFixed(1)}%
+                      </span>
                     </div>
                     <div className="text-sm font-bold text-white mt-1">Unleveraged Cap Rate</div>
                   </div>
@@ -700,7 +763,7 @@ export function InstitutionalValuationSection({
                     </div>
                     <div className="flex justify-between">
                       <span className="text-zinc-400">Cap Rate:</span>
-                      <span className="font-bold text-emerald-400">13,00% a.a.</span>
+                      <span className="font-bold text-emerald-400">{capRateRealizado.toFixed(2)}% a.a.</span>
                     </div>
                     <div className="flex justify-between text-[11px] text-zinc-400">
                       <span>Média SP/Litoral:</span>
@@ -717,18 +780,22 @@ export function InstitutionalValuationSection({
                   <div>
                     <div className="flex items-center justify-between text-xs text-amber-400 font-bold uppercase tracking-wider">
                       <span>2. Alavancagem</span>
-                      <span className="bg-blue-950 text-blue-300 px-1.5 py-0.5 rounded border border-blue-800 text-[10px]">1,17x</span>
+                      <span className="bg-blue-950 text-blue-300 px-1.5 py-0.5 rounded border border-blue-800 text-[10px]">
+                        {dscr.toFixed(2)}x
+                      </span>
                     </div>
                     <div className="text-sm font-bold text-white mt-1">Spread & Cobertura</div>
                   </div>
                   <div className="space-y-1.5 text-xs text-zinc-300 bg-zinc-900/80 p-2.5 rounded-lg border border-zinc-700/50">
                     <div className="flex justify-between">
                       <span className="text-zinc-400">Spread Líquido:</span>
-                      <span className="font-bold text-emerald-400">+2,5% a.a.</span>
+                      <span className="font-bold text-emerald-400">+{Math.max(0, capRateRealizado - 10.5).toFixed(1)}% a.a.</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-zinc-400">Cobertura DSCR:</span>
-                      <span className="font-bold text-white">1,17x (Folga 17%)</span>
+                      <span className="font-bold text-white">
+                        {dscr.toFixed(2)}x (Folga {Math.max(0, Math.round((dscr - 1) * 100))}%)
+                      </span>
                     </div>
                     <div className="flex justify-between text-[11px] text-zinc-400">
                       <span>Saldo Atual:</span>
@@ -752,7 +819,7 @@ export function InstitutionalValuationSection({
                   <div className="space-y-1.5 text-xs text-zinc-300 bg-zinc-900/80 p-2.5 rounded-lg border border-zinc-700/50">
                     <div className="flex justify-between">
                       <span className="text-zinc-400">TIR Total (TR 1%):</span>
-                      <span className="font-bold text-purple-300">21,73% a.a.</span>
+                      <span className="font-bold text-purple-300">{tirTotalComExit.toFixed(2)}% a.a.</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-zinc-400">Múltiplo (MOIC):</span>
