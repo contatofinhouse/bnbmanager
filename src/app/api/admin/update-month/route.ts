@@ -101,6 +101,18 @@ export async function POST(request: NextRequest) {
     const fcOperacional = Math.round((liqLoc + cond + luz + iptu + fin + manut + capex) * 100) / 100;
     setVal("fc_operacional", fcOperacional);
 
+    // If row saldo_conta exists, keep it in sync
+    const saldoRow = cloned.rows.find((r: any) => r.id === "saldo_conta");
+    if (saldoRow) {
+      const regCols = cloned.columns.filter((c: any) => !c.isTotal);
+      const currIdx = regCols.findIndex((c: any) => c.key === parsedResult.monthKey);
+      if (currIdx > 0) {
+        const prevColKey = regCols[currIdx - 1].key;
+        const prevSaldo = typeof saldoRow.values[prevColKey] === "number" ? saldoRow.values[prevColKey] : 0;
+        saldoRow.values[parsedResult.monthKey] = Math.round((prevSaldo + fcOperacional) * 100) / 100;
+      }
+    }
+
     // If Flat 229, update cotas_distribuicao
     if (cloned.property.cotas === 3) {
       setVal("cotas_distribuicao", Math.round((fcOperacional / 3) * 100) / 100);

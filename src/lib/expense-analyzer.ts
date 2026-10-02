@@ -8,6 +8,7 @@ const CATEGORY_MAP: Record<string, { id: string; label: string }> = {
   manutencao: { id: "manutencao", label: "Manutenção / Reposição" },
   capex: { id: "capex", label: "CAPEX / Investimentos" },
   lavanderia_diarista: { id: "lavanderia_diarista", label: "Lavanderia / Diarista" },
+  receita_offsite: { id: "receita_offsite", label: "Receita Offsite (Direta)" },
   outros: { id: "outros", label: "Outras Despesas" },
 };
 
@@ -182,43 +183,190 @@ export function analyzeBankStatementText(csvText: string, defaultPropertyId: str
   const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
   const items: ExpenseExtractedItem[] = [];
 
+  // Auto-detect property from bank account/agency or header
+  let detectedDefaultProperty = defaultPropertyId;
+  const upperFullText = csvText.toUpperCase();
+  if (upperFullText.includes("2050-8") || upperFullText.includes("3931") || upperFullText.includes("AMARILIS") || upperFullText.includes("FLAT 320")) {
+    detectedDefaultProperty = "flatincrivel-320";
+  } else if (upperFullText.includes("COPAN")) {
+    detectedDefaultProperty = "copan";
+  } else if (upperFullText.includes("229") || upperFullText.includes("DUPLEX")) {
+    detectedDefaultProperty = "flatincrivel-229";
+  }
+
   for (const line of lines) {
-    // Expected format e.g. "DD/MM/YYYY,Descrição,-150.00" or similar
+    // Ignore header/footer lines and empty separators
+    if (
+      line.includes("Filtro de resultados") ||
+      line.includes("Últimos Lancamentos") ||
+      line.includes("Data;Histórico") ||
+      line.includes("Data,Histórico") ||
+      line.includes("Extrato de:") ||
+      line.includes("Os dados acima") ||
+      line.includes("Não há lançamentos")
+    ) {
+      continue;
+    }
+
     const parts = line.split(/[;,]/).map((p) => p.replace(/"/g, "").trim());
     if (parts.length < 3) continue;
 
     const dateStr = parts[0];
-    const desc = parts[1];
-    const valStr = parts[2];
+    const desc = parts[1] || "";
+    const docto = parts.length >= 4 ? parts[2] : "";
 
     const parsedDate = parseBrDate(dateStr);
     if (!parsedDate) continue;
 
-    const val = parseBrMoney(valStr);
-    if (val <= 0) continue; // ignore non-debit or 0
-
     const descUpper = desc.toUpperCase();
-    let categoria = "outros";
-    let fornecedor = desc;
 
-    if (descUpper.includes("NEOENERGIA") || descUpper.includes("ELEKTRO") || descUpper.includes("ENEL")) {
-      categoria = "energia_eletrica";
-      fornecedor = "Energia Elétrica";
-    } else if (descUpper.includes("CONDOMINIO")) {
-      categoria = "condominio";
-      fornecedor = "Condomínio";
-    } else if (descUpper.includes("IPTU") || descUpper.includes("PREFEITURA")) {
-      categoria = "iptu";
-      fornecedor = "IPTU";
-    } else if (descUpper.includes("LEROY") || descUpper.includes("MANUTENCAO") || descUpper.includes("REPARO") || descUpper.includes("CHILDFIX")) {
-      categoria = "manutencao";
-    } else if (descUpper.includes("DIARISTA") || descUpper.includes("FAXINA") || descUpper.includes("LIMPEZA")) {
-      categoria = "lavanderia_diarista";
-    } else if (descUpper.includes("CAPEX") || descUpper.includes("REFORMA") || descUpper.includes("MOVEIS")) {
-      categoria = "capex";
+    // REGRA 1: Desconsiderar tudo que vier dos sócios Paulo Henrique e Rafael Fernandes (transferências entre contas)
+    if (
+      descUpper.includes("PAULO HENRIQUE") ||
+      descUpper.includes("PAULO H") ||
+      descUpper.includes("RAFAEL FERNANDES") ||
+      descUpper.includes("RAFAEL F") ||
+      descUpper.includes("RAFAEL")
+    ) {
+      continue;
     }
 
-    let imovelSugerido = defaultPropertyId;
+    // REGRA 2: Desconsiderar rentabilidade de caixa / aplicação automática
+    if (
+      descUpper.includes("RENTAB") ||
+      descUpper.includes("FACILCRED") ||
+      descUpper.includes("INVEST") ||
+      descUpper.includes("RENDIMENTO") ||
+      descUpper.includes("APLICACAO") ||
+      descUpper.includes("SALDO")
+    ) {
+      continue;
+    }
+
+    // Identificar se é Débito ou Crédito e extrair valor
+    let isDebito = false;
+    let isCredito = false;
+    let val = 0;
+
+    // Formato Bradesco com 5 ou mais colunas: [Data, Histórico, Docto, Crédito, Débito, Saldo]
+    if (parts.length >= 5) {
+      const credVal = parseBrMoney(parts[3]);
+      const debVal = parseBrMoney(parts[4]);
+
+      if (debVal > 0) {
+        isDebito = true;
+        val = debVal;
+      } else if (credVal > 0) {
+        isCredito = true;
+        val = credVal;
+      }
+    } else {
+      // Formato padrão 3 colunas: [Data, Descrição, Valor]
+      const rawValStr = parts[2];
+      val = parseBrMoney(rawValStr);
+      if (rawValStr.includes("-")) {
+        isDebito = true;
+      } else {
+        isCredito = true;
+      }
+    }
+
+    if (val <= 0) continue;
+
+    let categoria = "outros";
+    let categoriaLabel = "Outras Despesas";
+    let fornecedor = desc;
+    let tipo: "despesa" | "receita" = isCredito ? "receita" : "despesa";
+    let diarias = isCredito ? 1 : 0;
+    let confianca = 0.85;
+
+    if (isDebito) {
+      // REGRA 3: Pagamento para condomínio Amarílis / cobrança
+      // Abaixo de R$ 1.300,00 é referente a Lavanderia / Diarista. Acima disso é Condomínio.
+      if (
+        descUpper.includes("AMARILIS") ||
+        descUpper.includes("AMARILLIS") ||
+        descUpper.includes("CONDOMINIO") ||
+        descUpper.includes("COBRANCA") ||
+        descUpper.includes("PAGTO ELETRON  COBRANCA") ||
+        descUpper.includes("PAGTO ELETRON COBRANCA")
+      ) {
+        if (val < 1300) {
+          categoria = "lavanderia_diarista";
+          categoriaLabel = "Lavanderia / Diarista";
+          fornecedor = "Condomínio Amarílis (Lavanderia)";
+          confianca = 0.95;
+        } else {
+          categoria = "condominio";
+          categoriaLabel = "Condomínio";
+          fornecedor = "Condomínio Amarílis";
+          confianca = 0.95;
+        }
+      } else if (
+        descUpper.includes("PRESTACAO") ||
+        descUpper.includes("CRED IMOB") ||
+        descUpper.includes("FINANCIAMENTO")
+      ) {
+        categoria = "financiamento";
+        categoriaLabel = "Financiamento Imobiliário";
+        fornecedor = "Financiamento Bancário (Bradesco)";
+        confianca = 0.95;
+      } else if (
+        descUpper.includes("LUZ") ||
+        descUpper.includes("ELEKTRO") ||
+        descUpper.includes("NEOENERGIA") ||
+        descUpper.includes("ENEL") ||
+        descUpper.includes("CONTA DE LUZ")
+      ) {
+        categoria = "energia_eletrica";
+        categoriaLabel = "Energia Elétrica";
+        fornecedor = "Energia Elétrica";
+        confianca = 0.95;
+      } else if (
+        descUpper.includes("IPTU") ||
+        descUpper.includes("TRIBUTO") ||
+        descUpper.includes("PREFEITURA")
+      ) {
+        categoria = "iptu";
+        categoriaLabel = "IPTU";
+        fornecedor = "IPTU (Prefeitura)";
+        confianca = 0.95;
+      } else if (
+        descUpper.includes("LEROY") ||
+        descUpper.includes("MANUTENCAO") ||
+        descUpper.includes("REPARO") ||
+        descUpper.includes("CHILDFIX")
+      ) {
+        categoria = "manutencao";
+        categoriaLabel = "Manutenção / Reposição";
+        confianca = 0.85;
+      } else if (
+        descUpper.includes("CAPEX") ||
+        descUpper.includes("REFORMA") ||
+        descUpper.includes("MOVEIS")
+      ) {
+        categoria = "capex";
+        categoriaLabel = "CAPEX / Investimentos";
+        confianca = 0.85;
+      }
+    } else if (isCredito) {
+      // REGRA 4: Outras entradas PIX considera receita offsite
+      if (
+        descUpper.includes("PIX") ||
+        descUpper.includes("RECEBIDO") ||
+        descUpper.includes("CRED") ||
+        descUpper.includes("TRANSFERENCIA")
+      ) {
+        categoria = "receita_offsite";
+        categoriaLabel = "Receita Offsite (Direta)";
+        fornecedor = `${desc}${docto ? ` (Doc ${docto})` : ""}`;
+        tipo = "receita";
+        diarias = 1; // Padrão 1 diária, editável pelo usuário
+        confianca = 0.95;
+      }
+    }
+
+    let imovelSugerido = detectedDefaultProperty;
     if (descUpper.includes("320")) imovelSugerido = "flatincrivel-320";
     if (descUpper.includes("229")) imovelSugerido = "flatincrivel-229";
     if (descUpper.includes("COPAN")) imovelSugerido = "copan";
@@ -229,10 +377,12 @@ export function analyzeBankStatementText(csvText: string, defaultPropertyId: str
       data: parsedDate.iso,
       mesCompetencia: parsedDate.monthKey,
       categoria,
-      categoriaLabel: CATEGORY_MAP[categoria]?.label || "Outros",
+      categoriaLabel: CATEGORY_MAP[categoria]?.label || categoriaLabel,
       imovelSugerido,
-      descricao: desc,
-      confianca: 0.85,
+      descricao: docto ? `${desc} - Doc ${docto}` : desc,
+      confianca,
+      tipo,
+      diarias,
     });
   }
 

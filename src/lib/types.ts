@@ -55,4 +55,6 @@ export interface ExpenseExtractedItem {
   descricao: string;
   confianca: number; // 0 a 1
   codigoBarras?: string;
+  tipo?: "despesa" | "receita";
+  diarias?: number;
 }

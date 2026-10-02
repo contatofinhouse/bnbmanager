@@ -34,6 +34,7 @@ const CATEGORIES = [
   { id: "manutencao", label: "Manutenção / Reposição" },
   { id: "capex", label: "CAPEX / Investimentos" },
   { id: "lavanderia_diarista", label: "Lavanderia / Diarista" },
+  { id: "receita_offsite", label: "Receita Offsite (Direta)" },
   { id: "outros", label: "Outras Despesas" },
 ];
 
@@ -54,10 +55,11 @@ export function ExpenseAnalyzerModal({
 
   // Form fields for single item confirmation
   const [selectedProp, setSelectedProp] = useState(activePropertyId);
-  const [selectedMonth, setSelectedMonth] = useState("2026-08");
+  const [selectedMonth, setSelectedMonth] = useState("2026-09");
   const [selectedCategory, setSelectedCategory] = useState("condominio");
   const [itemValor, setItemValor] = useState(0);
   const [itemFornecedor, setItemFornecedor] = useState("");
+  const [itemDiarias, setItemDiarias] = useState(1);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -108,6 +110,7 @@ export function ExpenseAnalyzerModal({
     setIsApplying(true);
     setError(null);
     try {
+      const isReceita = selectedCategory === "receita_offsite";
       const res = await fetch("/api/expenses/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -117,16 +120,18 @@ export function ExpenseAnalyzerModal({
           categoria: selectedCategory,
           valor: itemValor,
           fornecedor: itemFornecedor,
+          diarias: isReceita ? itemDiarias : 0,
+          tipo: isReceita ? "receita" : "despesa",
         }),
       });
 
       const json = await res.json();
       if (!res.ok || json.error) {
-        throw new Error(json.error || "Falha ao gravar despesa");
+        throw new Error(json.error || "Falha ao gravar na DRE");
       }
 
       setSuccessMessage(
-        `Despesa de ${formatCurrency(itemValor)} lançada com sucesso em ${selectedMonth} (${selectedCategory})!`
+        `${isReceita ? "Receita" : "Despesa"} de ${formatCurrency(itemValor)} lançada com sucesso em ${selectedMonth} (${selectedCategory})!`
       );
       if (onExpenseApplied) onExpenseApplied();
       setTimeout(() => {
@@ -141,21 +146,64 @@ export function ExpenseAnalyzerModal({
 
   const handleApplyStatementItem = async (item: ExpenseExtractedItem) => {
     try {
+      const isReceita = item.categoria === "receita_offsite" || item.tipo === "receita";
       await fetch("/api/expenses/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           propertyId: item.imovelSugerido || activePropertyId,
-          monthKey: item.mesCompetencia || "2026-08",
+          monthKey: item.mesCompetencia || "2026-09",
           categoria: item.categoria || "outros",
           valor: item.valor,
           fornecedor: item.fornecedor,
+          data: item.data,
+          diarias: isReceita ? (item.diarias !== undefined ? item.diarias : 1) : 0,
+          tipo: isReceita ? "receita" : "despesa",
         }),
       });
       setStatementItems((prev) => prev.filter((i) => i !== item));
       if (onExpenseApplied) onExpenseApplied();
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleUpdateStatementItem = (idx: number, updates: Partial<ExpenseExtractedItem>) => {
+    setStatementItems((prev) =>
+      prev.map((item, i) => {
+        if (i === idx) {
+          const next = { ...item, ...updates };
+          if (updates.categoria) {
+            next.categoriaLabel = CATEGORIES.find((c) => c.id === updates.categoria)?.label || updates.categoria;
+            if (updates.categoria === "receita_offsite") {
+              next.tipo = "receita";
+              if (next.diarias === undefined) next.diarias = 1;
+            } else {
+              next.tipo = "despesa";
+            }
+          }
+          return next;
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleApplyAllStatementItems = async () => {
+    setIsApplying(true);
+    try {
+      for (const item of [...statementItems]) {
+        await handleApplyStatementItem(item);
+      }
+      setSuccessMessage("Todos os lançamentos foram aplicados na DRE!");
+      if (onExpenseApplied) onExpenseApplied();
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message || "Erro ao aplicar lançamentos em lote");
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -349,6 +397,25 @@ export function ExpenseAnalyzerModal({
                   className="w-full rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs text-zinc-900 shadow-2xs focus:border-zinc-950 focus:outline-hidden"
                 />
               </div>
+
+              {/* Diárias (apenas se for Receita Offsite) */}
+              {selectedCategory === "receita_offsite" && (
+                <div>
+                  <label className="block text-[11px] font-medium text-emerald-700 mb-1">
+                    Diárias a acrescentar na DRE:
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={itemDiarias}
+                    onChange={(e) => setItemDiarias(parseInt(e.target.value, 10) || 0)}
+                    className="w-full rounded-md border border-emerald-300 bg-emerald-50/50 px-3 py-1.5 text-xs font-bold text-emerald-950 shadow-2xs focus:border-emerald-600 focus:outline-hidden"
+                  />
+                  <span className="text-[10px] text-zinc-500">
+                    Soma às diárias do mês e recalcula taxa de ocupação
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="pt-2 flex justify-end gap-2">
@@ -376,31 +443,128 @@ export function ExpenseAnalyzerModal({
         {/* Bank Statement Batch View */}
         {statementItems.length > 0 && (
           <div className="mt-5 rounded-lg border border-zinc-200 bg-zinc-50/50 p-4 space-y-3">
-            <h4 className="text-xs font-semibold text-zinc-900">
-              {statementItems.length} lançamentos encontrados no extrato:
-            </h4>
-            <div className="max-h-60 overflow-y-auto divide-y divide-zinc-200 border border-zinc-200 rounded-md bg-white">
-              {statementItems.map((st, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2.5 text-xs hover:bg-zinc-50">
-                  <div>
-                    <span className="font-semibold text-zinc-900">{st.descricao}</span>
-                    <div className="text-[11px] text-zinc-500">
-                      {st.data} &bull; Sugestão: <strong className="text-zinc-700">{st.categoriaLabel}</strong> &bull; Imóvel: {st.imovelSugerido}
+            <div className="flex items-center justify-between border-b border-zinc-200/80 pb-2.5">
+              <div>
+                <h4 className="text-xs font-semibold text-zinc-900">
+                  {statementItems.length} lançamentos identificados no extrato:
+                </h4>
+                <p className="text-[11px] text-zinc-500">
+                  Sócios e rendimentos já foram desconsiderados. Amarílis &lt; R$ 1.300 classificado em Lavanderia.
+                </p>
+              </div>
+              <button
+                disabled={isApplying}
+                onClick={handleApplyAllStatementItems}
+                className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {isApplying ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Lançando todos...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-3 w-3" />
+                    Lançar Todos na DRE
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="max-h-80 overflow-y-auto divide-y divide-zinc-200 border border-zinc-200 rounded-md bg-white">
+              {statementItems.map((st, idx) => {
+                const isReceita = st.categoria === "receita_offsite" || st.tipo === "receita";
+                return (
+                  <div
+                    key={idx}
+                    className="p-3 text-xs hover:bg-zinc-50/70 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                            isReceita
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-rose-100 text-rose-800"
+                          }`}
+                        >
+                          {isReceita ? "+ Entrada PIX" : "- Despesa"}
+                        </span>
+                        <span className="font-semibold text-zinc-900 truncate">
+                          {st.descricao}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-zinc-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span>{st.data}</span>
+                        <span>&bull;</span>
+                        <span>Imóvel: <strong>{st.imovelSugerido}</strong></span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      {/* Categoria Select */}
+                      <select
+                        value={st.categoria}
+                        onChange={(e) =>
+                          handleUpdateStatementItem(idx, { categoria: e.target.value })
+                        }
+                        className="rounded border border-zinc-300 bg-white px-2 py-1 text-[11px] text-zinc-900 shadow-2xs focus:border-zinc-950 focus:outline-hidden"
+                      >
+                        {CATEGORIES.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.label}
+                          </option>
+                        ))}
+                      </select>
+
+                      {/* If Receita Offsite, show Diárias input */}
+                      {isReceita && (
+                        <div className="flex items-center gap-1 bg-emerald-50 border border-emerald-200 rounded px-2 py-0.5">
+                          <span className="text-[10px] font-medium text-emerald-800">Diárias:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={st.diarias !== undefined ? st.diarias : 1}
+                            onChange={(e) =>
+                              handleUpdateStatementItem(idx, {
+                                diarias: parseInt(e.target.value, 10) || 0,
+                              })
+                            }
+                            className="w-10 rounded border border-emerald-300 bg-white px-1 py-0.5 text-center text-[11px] font-bold text-emerald-950"
+                            title="Quantas diárias foram para acrescentar na DRE?"
+                          />
+                        </div>
+                      )}
+
+                      <span
+                        className={`font-mono font-bold text-xs ${
+                          isReceita ? "text-emerald-700" : "text-rose-600"
+                        }`}
+                      >
+                        {isReceita ? "+" : "-"}
+                        {formatCurrency(st.valor)}
+                      </span>
+
+                      <button
+                        onClick={() => handleApplyStatementItem(st)}
+                        className="rounded bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-zinc-800 cursor-pointer shadow-2xs"
+                      >
+                        Lançar
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          setStatementItems((prev) => prev.filter((_, i) => i !== idx))
+                        }
+                        className="rounded p-1 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700 cursor-pointer"
+                        title="Desconsiderar / Ignorar lançamento"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono font-bold text-rose-600">
-                      {formatCurrency(st.valor)}
-                    </span>
-                    <button
-                      onClick={() => handleApplyStatementItem(st)}
-                      className="rounded bg-zinc-900 px-2 py-1 text-[11px] font-medium text-white hover:bg-zinc-800 cursor-pointer"
-                    >
-                      Lançar
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

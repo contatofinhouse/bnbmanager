@@ -198,6 +198,7 @@ export function DreTable({ columns, rows, allColumns }: DreTableProps) {
             <tbody className="divide-y divide-zinc-100">
               {rows.map((row, idx) => {
                 const isHighlight = row.isHighlight || row.id === "receita_liquida_locacao";
+                const isSaldoConta = row.id === "saldo_conta";
                 const isOcupacao = row.id === "ocupacao";
                 const isDiarista = row.id === "lavanderia_diarista";
                 const isAdm = row.id === "administracao";
@@ -207,7 +208,9 @@ export function DreTable({ columns, rows, allColumns }: DreTableProps) {
                     key={row.id}
                     className={cn(
                       "transition-colors",
-                      isHighlight
+                      isSaldoConta
+                        ? "bg-slate-100/70 font-bold text-slate-900 border-t-2 border-slate-300 hover:bg-slate-100"
+                        : isHighlight
                         ? "bg-emerald-50/60 font-semibold text-emerald-950 hover:bg-emerald-50"
                         : idx % 2 === 0
                         ? "bg-white hover:bg-zinc-50/80"
@@ -217,7 +220,9 @@ export function DreTable({ columns, rows, allColumns }: DreTableProps) {
                     <td
                       className={cn(
                         "sticky left-0 z-10 py-3 pl-5 pr-4 font-medium border-r border-zinc-200 whitespace-nowrap",
-                        isHighlight
+                        isSaldoConta
+                          ? "bg-slate-100 text-slate-950 font-extrabold shadow-[1px_0_0_0_#cbd5e1]"
+                          : isHighlight
                           ? "bg-emerald-50 text-emerald-900 font-bold shadow-[1px_0_0_0_#e4e4e7]"
                           : idx % 2 === 0
                           ? "bg-white text-zinc-800 shadow-[1px_0_0_0_#e4e4e7]"
@@ -239,8 +244,14 @@ export function DreTable({ columns, rows, allColumns }: DreTableProps) {
                             col.isTotal
                               ? "bg-zinc-100/50 font-semibold text-zinc-950 border-x border-zinc-200"
                               : "",
-                            isHighlight
-                              ? "text-emerald-700 font-bold"
+                            isSaldoConta
+                              ? typeof val === "number" && val < 0
+                                ? "text-rose-600 font-extrabold"
+                                : "text-slate-900 font-extrabold"
+                              : isHighlight
+                              ? typeof val === "number" && val < 0
+                                ? "text-rose-600 font-bold"
+                                : "text-emerald-700 font-bold"
                               : isOcupacao && typeof val === "number" && val >= 0.8
                               ? "text-zinc-950 font-semibold"
                               : (isDiarista || isAdm) && typeof val === "number" && val < 0

@@ -17,12 +17,14 @@ import {
   FileSpreadsheet,
   Sparkles,
   Receipt,
+  PlusCircle,
 } from "lucide-react";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
 import { PropertyData } from "@/lib/types";
 import { PROPERTIES, PropertyMeta } from "@/lib/properties";
 import { UploadModal } from "@/components/upload-modal";
 import { ExpenseAnalyzerModal } from "@/components/expense-analyzer-modal";
+import { ManualEntryModal } from "@/components/manual-entry-modal";
 import { AirbnbMonthlySummary } from "@/lib/raw-parsers/airbnb-parser";
 import { BookingMonthlySummary } from "@/lib/raw-parsers/booking-parser";
 import { consolidateMonthData, applyConsolidatedToPropertyData } from "@/lib/raw-parsers/consolidator";
@@ -40,6 +42,7 @@ export default function AdminPage() {
   // Modals state
   const [isRawUploadOpen, setIsRawUploadOpen] = useState(false);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
 
   const [notification, setNotification] = useState<string | null>(null);
 
@@ -374,6 +377,14 @@ export default function AdminPage() {
               </button>
 
               <button
+                onClick={() => setIsManualEntryOpen(true)}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-500 transition-colors cursor-pointer"
+              >
+                <PlusCircle className="h-4 w-4" />
+                <span>Lançamento Manual (Manutenção / Off-booking / Pet)</span>
+              </button>
+
+              <button
                 onClick={handleDownloadBackup}
                 disabled={!currentData}
                 title="Baixar arquivo JSON atualizado da propriedade"
@@ -421,11 +432,13 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
-                  {currentData.rows.slice(0, 15).map((row) => (
+                  {currentData.rows.map((row) => (
                     <tr
                       key={row.id}
                       className={
-                        row.isHighlight
+                        row.id === "saldo_conta"
+                          ? "bg-slate-100 font-extrabold text-slate-950 border-t-2 border-slate-300"
+                          : row.isHighlight
                           ? "bg-emerald-50/60 font-bold text-emerald-950"
                           : "hover:bg-zinc-50/50"
                       }
@@ -436,7 +449,14 @@ export default function AdminPage() {
                       {currentData.columns.slice(-8).map((c) => {
                         const val = row.values[c.key];
                         return (
-                          <td key={c.key} className="px-3 py-2 text-right tabular-nums whitespace-nowrap">
+                          <td
+                            key={c.key}
+                            className={`px-3 py-2 text-right tabular-nums whitespace-nowrap ${
+                              row.id === "saldo_conta"
+                                ? "font-extrabold text-slate-900"
+                                : ""
+                            }`}
+                          >
                             {val === null || val === undefined
                               ? "—"
                               : row.type === "currency"
@@ -469,6 +489,13 @@ export default function AdminPage() {
         onClose={() => setIsExpenseModalOpen(false)}
         activePropertyId={selectedPropertyId}
         onExpenseApplied={() => loadPropertyData(selectedPropertyId)}
+      />
+
+      <ManualEntryModal
+        isOpen={isManualEntryOpen}
+        onClose={() => setIsManualEntryOpen(false)}
+        activePropertyId={selectedPropertyId}
+        onEntryApplied={() => loadPropertyData(selectedPropertyId)}
       />
     </div>
   );
