@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<title>FINHOUSE Short Stay — Gestão e Investimento em Locação por Temporada</title>
+<meta name="description" content="Paper FINHOUSE: administração profissional de imóveis short stay (Airbnb/Booking) com taxa de 12% e modelo de compra e cotização de imóveis para renda.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+@page { size: A4; margin: 0; }
+:root { --navy:#0E1A2B; --teal:#0F9D8A; --gold:#C8A15A; --coral:#E0765A; --slate:#64748B; --ink:#1B2433; --muted:#5B6678; --line:#E6E9EF; --bg:#F6F7FA; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+html, body { margin: 0; padding: 0; font-family: 'Inter', 'Segoe UI', Arial, sans-serif; color: var(--ink); font-size: 10.2pt; line-height: 1.5; }
+.page { width: 210mm; height: 297mm; padding: 18mm 18mm 16mm; position: relative; page-break-after: always; overflow: hidden; background: #fff; }
+.page:last-child { page-break-after: auto; }
+h1, h2, h3 { margin: 0; }
+h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 23pt; font-weight: 600; color: var(--navy); letter-spacing: -0.3px; margin-bottom: 4mm; }
+h3 { font-size: 11.5pt; font-weight: 700; color: var(--navy); margin: 5mm 0 2mm; }
+p { margin: 0 0 3mm; color: #2B3445; }
+.eyebrow { font-size: 8pt; font-weight: 700; letter-spacing: 2.2px; text-transform: uppercase; color: var(--teal); margin-bottom: 2mm; }
+.lead { font-size: 11.5pt; color: var(--muted); font-weight: 400; margin-bottom: 6mm; }
+.foot { position: absolute; bottom: 9mm; left: 18mm; right: 18mm; display: flex; justify-content: space-between; font-size: 7.5pt; color: #98A1B2; border-top: 1px solid var(--line); padding-top: 3mm; }
+.foot b { color: var(--navy); letter-spacing: 1.5px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; }
+.kpi { background: var(--bg); border-radius: 10px; padding: 4mm 4.5mm; border: 1px solid var(--line); }
+.kpi .v { font-size: 17pt; font-weight: 800; color: var(--navy); letter-spacing: -0.5px; line-height: 1.1; white-space: nowrap; }
+.kpi .v.t { color: var(--teal); }
+.kpi .l { font-size: 7.8pt; color: var(--muted); margin-top: 1mm; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
+.kpi .s { font-size: 8pt; color: var(--muted); margin-top: 1mm; }
+.card { border: 1px solid var(--line); border-radius: 12px; padding: 5mm; background: #fff; }
+.card.dark { background: var(--navy); color: #fff; border: none; }
+.card.dark p, .card.dark li { color: #C9D3E3; }
+.card.dark h3 { color: #fff; }
+.card.teal { background: linear-gradient(135deg, #0F9D8A, #0B7F70); color: #fff; border: none; }
+.card.teal p, .card.teal li { color: #E3F6F2; }
+.card.teal h3 { color: #fff; }
+table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+th { text-align: left; font-size: 7.6pt; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); font-weight: 700; border-bottom: 2px solid var(--navy); padding: 2mm 2mm; }
+td { padding: 1.9mm 2mm; border-bottom: 1px solid var(--line); }
+td:not(:first-child), th:not(:first-child) { text-align: right; }
+td:not(:first-child) { white-space: nowrap; }
+tr.sub td { font-weight: 700; background: #F3F5F9; }
+tr.total td { font-weight: 800; color: #fff; background: var(--navy); }
+tr.neg td:last-child { color: #A04A3A; }
+tr.hl td { background: #E8F6F3; font-weight: 700; color: var(--teal) !important; }
+tr.hl td:last-child { color: var(--teal) !important; }
+ul { margin: 0 0 3mm; padding-left: 4.5mm; } li { margin-bottom: 1.2mm; color: #2B3445; }
+ul.check { list-style: none; padding-left: 0; } ul.check li { padding-left: 6mm; position: relative; }
+ul.check li::before { content: ''; position: absolute; left: 0; top: 1.6mm; width: 3mm; height: 3mm; border-radius: 50%; background: var(--teal); box-shadow: inset 0 0 0 0.9mm #CFEFEA; }
+.chart { width: 100%; height: auto; display: block; }
+.chart .ax { font-size: 10px; fill: #7A8496; font-family: Inter, sans-serif; }
+.chart .ax.small { font-size: 9px; }
+.chart .bv { font-size: 11px; font-weight: 700; fill: #0E1A2B; font-family: Inter, sans-serif; }
+.chart .lbl { font-size: 12px; fill: #2B3445; font-family: Inter, sans-serif; }
+.chart .lbl.hl { font-weight: 800; fill: #0F9D8A; }
+.legend { display: flex; gap: 5mm; font-size: 8.5pt; color: var(--muted); margin: 1mm 0 2mm; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.src { font-size: 7.4pt; color: #98A1B2; margin-top: 1.5mm; }
+.pill { display: inline-block; font-size: 7.5pt; font-weight: 700; padding: 0.8mm 2.6mm; border-radius: 99px; background: #E8F6F3; color: var(--teal); letter-spacing: 0.5px; }
+.note { background: #FBF7EE; border-left: 3px solid var(--gold); padding: 3mm 4mm; border-radius: 0 8px 8px 0; font-size: 8.8pt; color: #5A4A2A; margin-top: 3mm; }
+.step { display: flex; gap: 3.5mm; margin-bottom: 3mm; }
+.step .n { flex: 0 0 8mm; height: 8mm; border-radius: 50%; background: var(--navy); color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 9pt; }
+.step b { color: var(--navy); }
+
+/* capa */
+.cover { padding: 0; background: var(--navy); color: #fff; }
+.cover .img { position: absolute; inset: 0; background: url('img/cover.jpg') center/cover; }
+.cover .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(14,26,43,0.15) 0%, rgba(14,26,43,0.35) 40%, rgba(14,26,43,0.96) 72%, #0E1A2B 100%); }
+.cover .content { position: absolute; left: 18mm; right: 18mm; bottom: 22mm; }
+.cover .brand { position: absolute; top: 16mm; left: 18mm; font-weight: 800; letter-spacing: 5px; font-size: 11pt; }
+.cover .brand span { color: var(--gold); }
+.cover h1 { font-family: 'Playfair Display', Georgia, serif; font-size: 40pt; line-height: 1.05; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 5mm; }
+.cover h1 em { color: var(--gold); font-style: italic; }
+.cover .subt { font-size: 12.5pt; color: #C9D3E3; max-width: 150mm; margin-bottom: 9mm; }
+.cover .row { display: flex; gap: 9mm; border-top: 1px solid rgba(255,255,255,0.18); padding-top: 6mm; }
+.cover .row div b { display: block; font-size: 19pt; color: #fff; font-weight: 800; }
+.cover .row div span { font-size: 7.8pt; color: #9FB0C8; text-transform: uppercase; letter-spacing: 1px; }
+.hero-img { width: 100%; height: 62mm; border-radius: 12px; background: url('img/riviera.jpg') center/cover; margin-bottom: 5mm; }
+.toc li { list-style: none; display: flex; justify-content: space-between; border-bottom: 1px dashed var(--line); padding: 2mm 0; font-size: 10.5pt; }
+.toc { padding: 0; }
+.toc li span:first-child b { color: var(--teal); margin-right: 4mm; }
+</style></head><body>
+
+<!-- 1. CAPA -->
+<section class="page cover">
+  <div class="img"></div><div class="shade"></div>
+  <div class="brand">FIN<span>HOUSE</span></div>
+  <div class="content">
+    <div class="eyebrow" style="color:#C8A15A">Paper · Outubro de 2026</div>
+    <h1>Short Stay como<br><em>ativo profissional</em></h1>
+    <p class="subt">Administração completa de imóveis em Airbnb e Booking com taxa de 12% — e um modelo de compra e cotização de imóveis para renda de temporada.</p>
+    <div class="row">
+      <div><b>77%</b><span>Ocupação média 2026</span></div>
+      <div><b>244</b><span>Check-ins jan–set/26</span></div>
+      <div><b>3</b><span>Imóveis sob gestão</span></div>
+      <div><b>12%</b><span>Taxa de administração</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 2. SUMÁRIO EXECUTIVO -->
+<section class="page">
+  <div class="eyebrow">Sumário executivo</div>
+  <h2>Operamos acima do mercado. Agora, para terceiros.</h2>
+  <p class="lead">Desde 2024 a FINHOUSE administra imóveis próprios e em cotas no Edifício Copan (São Paulo) e na Riviera de São Lourenço (Bertioga). Com processos, precificação ativa e controle financeiro mensal por imóvel, mantemos ocupação de 74% a 79% — contra cerca de 61% da média de São Paulo e 46% de Bertioga.</p>
+  <div class="grid4" style="margin-bottom:6mm">
+    <div class="kpi"><div class="v t">+18 p.p.</div><div class="l">Copan vs média SP</div><div class="s">Ocupação 79% em 2026</div></div>
+    <div class="kpi"><div class="v t">+32 p.p.</div><div class="l">Riviera vs Bertioga</div><div class="s">Flat 320: 78% em 2026</div></div>
+    <div class="kpi"><div class="v">R$ 156,7 mil</div><div class="l">Receita Flat 229 · 2025</div><div class="s">109 check-ins no ano</div></div>
+    <div class="kpi"><div class="v">+28%</div><div class="l">Diária média Flat 320</div><div class="s">2026 vs 2025</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card teal">
+      <div class="eyebrow" style="color:#CFEFEA">Business 1</div>
+      <h3 style="margin-top:0">Administração Short Stay · 12%</h3>
+      <p>Gestão completa do imóvel do proprietário: anúncio, preço, calendário, hóspedes, lavanderia, pequenas manutenções e prestação de contas mensal. Taxa de <b>12% sobre o valor recebido das plataformas</b> — abaixo da faixa de 20–35% das gestoras full-service.</p>
+    </div>
+    <div class="card dark">
+      <div class="eyebrow" style="color:#C8A15A">Business 2</div>
+      <h3 style="margin-top:0">Compra & Cotização</h3>
+      <p>A FINHOUSE seleciona, compra, reforma e mobilia imóveis com vocação de temporada e divide em cotas entre investidores. A gestão segue o mesmo modelo de 12%. No cenário base, um flat de praia de R$ 550 mil gera TIR estimada de <b>9,5% a.a.</b> por cota em 10 anos.</p>
+    </div>
+  </div>
+  <h3>Neste documento</h3>
+  <ul class="toc">
+    <li><span><b>01</b>O mercado de short stay no Brasil</span><span>3</span></li>
+    <li><span><b>02</b>Benchmarks: ocupação, diária e taxas de gestão</span><span>4</span></li>
+    <li><span><b>03</b>Track record FINHOUSE</span><span>5</span></li>
+    <li><span><b>04</b>Business 1 — Administração Short Stay</span><span>7</span></li>
+    <li><span><b>05</b>Business 2 — Compra & Cotização</span><span>10</span></li>
+    <li><span><b>06</b>Tecnologia, riscos e próximos passos</span><span>12</span></li>
+  </ul>
+  <div class="foot"><b>FINHOUSE</b><span>Short Stay · Gestão & Investimento</span><span>2</span></div>
+</section>
+
+<!-- 3. MERCADO -->
+<section class="page">
+  <div class="eyebrow">01 · Mercado</div>
+  <h2>Por que short stay?</h2>
+  <div class="hero-img"></div>
+  <p>A locação por temporada deixou de ser renda extra e virou uma classe de ativo. Airbnb e Booking dão acesso a demanda nacional e internacional. Bem operado, o mesmo imóvel pode render <b>bem mais que o aluguel tradicional</b> (no nosso studio-tipo em SP, ~63% a mais já líquido de todos os custos), em troca de mais trabalho operacional — que é exatamente o que a FINHOUSE assume.</p>
+  <div class="grid2">
+    <div>
+      <h3>Dois perfis de demanda que operamos</h3>
+      <ul class="check">
+        <li><b>Urbano (São Paulo):</b> turismo de negócios, eventos, cultura e saúde. Demanda estável o ano inteiro, estadias de ~3 noites e diárias de R$ 240–280 para studios.</li>
+        <li><b>Praia (Riviera de São Lourenço):</b> lazer de famílias e casais. Muito sazonal: o verão e os feriados concentram receita, e a baixa temporada pede preço dinâmico e estadias curtas.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Mudanças que exigem profissionalização</h3>
+      <ul class="check">
+        <li><b>Condomínios (STJ):</b> em condomínio de uso estritamente residencial, a locação por diárias frequente depende de autorização na convenção (quórum de 2/3). Por isso, checar a convenção é o primeiro filtro.</li>
+        <li><b>Reforma tributária (LC 214/2025):</b> estadias de até 90 dias foram equiparadas à hotelaria para IBS/CBS, com redutor de 40%. A pessoa física com poucos imóveis segue, em regra, apenas no IR. Já quem passa de 3 imóveis e de cerca de R$ 240 mil/ano de receita entra no regime regular.</li>
+        <li><b>Plataformas:</b> taxa única do Airbnb de ~15,5–16% ao anfitrião e comissão Booking de 13–15%. A margem depende de preço e de canal direto.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><b>FINHOUSE</b><span>Short Stay · Gestão & Investimento</span><span>3</span></div>
+</section>
+
+<!-- 4. BENCHMARKS -->
+<section class="page">
+  <div class="eyebrow">02 · Benchmarks</div>
+  <h2>Ocupação acima do mercado, taxa abaixo</h2>
+  <p class="lead">Comparamos nossos imóveis com as médias de mercado (AirDNA / Airbtics) e com as taxas das principais gestoras do país.</p>
+  <h3>Taxa de ocupação 2026 · FINHOUSE vs mercado</h3>
+  <svg viewBox="0 0 720 230" class="chart"><line x1="52" x2="708" y1="190" y2="190" stroke="#E6E9EF"/><text x="44" y="194" text-anchor="end" class="ax">0%</text><line x1="52" x2="708" y1="147.5" y2="147.5" stroke="#E6E9EF"/><text x="44" y="151.5" text-anchor="end" class="ax">25%</text><line x1="52" x2="708" y1="105" y2="105" stroke="#E6E9EF"/><text x="44" y="109" text-anchor="end" class="ax">50%</text><line x1="52" x2="708" y1="62.5" y2="62.5" stroke="#E6E9EF"/><text x="44" y="66.5" text-anchor="end" class="ax">75%</text><line x1="52" x2="708" y1="20" y2="20" stroke="#E6E9EF"/><text x="44" y="24" text-anchor="end" class="ax">100%</text><rect x="75.616" y="54.87179487179489" width="83.96799999999999" height="135.1282051282051" rx="4" fill="#E0765A"/><text x="117.6" y="48.87179487179489" text-anchor="middle" class="bv">79%</text><text x="117.6" y="208" text-anchor="middle" class="ax">Copan</text><text x="117.6" y="221" text-anchor="middle" class="ax small">2026</text><rect x="206.81599999999997" y="86.3" width="83.96799999999999" height="103.7" rx="4" fill="#CBD3DE"/><text x="248.79999999999995" y="80.3" text-anchor="middle" class="bv">61%</text><text x="248.79999999999995" y="208" text-anchor="middle" class="ax">Média SP</text><text x="248.79999999999995" y="221" text-anchor="middle" class="ax small">AirDNA</text><rect x="338.01599999999996" y="63.58974358974359" width="83.96799999999999" height="126.41025641025641" rx="4" fill="#0F9D8A"/><text x="379.99999999999994" y="57.58974358974359" text-anchor="middle" class="bv">74%</text><text x="379.99999999999994" y="208" text-anchor="middle" class="ax">Flat 229</text><text x="379.99999999999994" y="221" text-anchor="middle" class="ax small">2026</text><rect x="469.21599999999995" y="57.98534798534797" width="83.96799999999999" height="132.01465201465203" rx="4" fill="#4C8DD6"/><text x="511.19999999999993" y="51.98534798534797" text-anchor="middle" class="bv">78%</text><text x="511.19999999999993" y="208" text-anchor="middle" class="ax">Flat 320</text><text x="511.19999999999993" y="221" text-anchor="middle" class="ax small">2026</text><rect x="600.4159999999999" y="111.8" width="83.96799999999999" height="78.2" rx="4" fill="#CBD3DE"/><text x="642.4" y="105.8" text-anchor="middle" class="bv">46%</text><text x="642.4" y="208" text-anchor="middle" class="ax">Bertioga</text><text x="642.4" y="221" text-anchor="middle" class="ax small">mercado</text></svg>
+  <div class="src">Fontes: AirDNA e Airbtics (São Paulo ~60–62%, ADR ~R$ 240–250); Guest Favorites (Bertioga ~42–50%). FINHOUSE: dados próprios jan–set/2026.</div>
+  <h3>Taxa de administração · comparativo de mercado</h3>
+  <svg viewBox="0 0 720 230" class="chart"><line x1="210" x2="210" y1="10" y2="204" stroke="#E6E9EF"/><text x="210" y="220" text-anchor="middle" class="ax">0%</text><line x1="330" x2="330" y1="10" y2="204" stroke="#E6E9EF"/><text x="330" y="220" text-anchor="middle" class="ax">10%</text><line x1="450" x2="450" y1="10" y2="204" stroke="#E6E9EF"/><text x="450" y="220" text-anchor="middle" class="ax">20%</text><line x1="570" x2="570" y1="10" y2="204" stroke="#E6E9EF"/><text x="570" y="220" text-anchor="middle" class="ax">30%</text><line x1="690" x2="690" y1="10" y2="204" stroke="#E6E9EF"/><text x="690" y="220" text-anchor="middle" class="ax">40%</text><text x="198" y="33" text-anchor="end" class="lbl hl">FINHOUSE</text><rect x="210" y="20" width="151.2" height="18" rx="9" fill="#0F9D8A"/><text x="369.2" y="33" class="bv">12%</text><text x="198" y="71" text-anchor="end" class="lbl">Housi</text><rect x="210" y="58" width="240" height="18" rx="9" fill="#D7DDE6"/><rect x="354" y="58" width="96" height="18" rx="9" fill="#64748B"/><text x="458" y="71" class="bv">12–20%</text><text x="198" y="109" text-anchor="end" class="lbl">Seazone</text><rect x="210" y="96" width="300" height="18" rx="9" fill="#D7DDE6"/><rect x="450" y="96" width="60" height="18" rx="9" fill="#64748B"/><text x="518" y="109" class="bv">20–25%</text><text x="198" y="147" text-anchor="end" class="lbl">Charlie</text><rect x="210" y="134" width="360" height="18" rx="9" fill="#D7DDE6"/><rect x="450" y="134" width="120" height="18" rx="9" fill="#64748B"/><text x="578" y="147" class="bv">20–30%</text><text x="198" y="185" text-anchor="end" class="lbl">Gestoras full-service (média)</text><rect x="210" y="172" width="420" height="18" rx="9" fill="#D7DDE6"/><rect x="450" y="172" width="180" height="18" rx="9" fill="#64748B"/><text x="638" y="185" class="bv">20–35%</text></svg>
+  <div class="src">Faixas estimadas a partir de material público e reportagens (Housi, Seazone, Charlie; PriceLabs para média full-service). Os percentuais variam por contrato, imóvel e serviços incluídos.</div>
+  <table style="margin-top:4mm">
+    <tr><th>Indicador</th><th>Mercado</th><th>FINHOUSE</th></tr>
+    <tr><td>Ocupação São Paulo (studio)</td><td>~61%</td><td><b>79%</b> (Copan 2026)</td></tr>
+    <tr><td>Diária média São Paulo</td><td>R$ 240–250</td><td><b>R$ 268</b> (Copan 2025)</td></tr>
+    <tr><td>Ocupação Bertioga / Riviera</td><td>42–50%</td><td><b>74% – 78%</b></td></tr>
+    <tr><td>Taxa de gestão full-service</td><td>20–35%</td><td><b>12%</b></td></tr>
+  </table>
+  <div class="foot"><b>FINHOUSE</b><span>Short Stay · Gestão & Investimento</span><span>4</span></div>
+</section>
+
+<!-- 5. TRACK RECORD 1 -->
+<section class="page">
+  <div class="eyebrow">03 · Track record</div>
+  <h2>Três imóveis, dois mercados, dados reais</h2>
+  <p class="lead">Todos os números abaixo vêm do controle financeiro mensal de cada imóvel (DRE por reserva, conciliada com os relatórios de Airbnb e Booking).</p>
+  <div class="legend"><span><i style="background:#E0765A"></i>Copan · SP</span><span><i style="background:#0F9D8A"></i>Flat 229 · Riviera</span><span><i style="background:#4C8DD6"></i>Flat 320 · Riviera</span><span>┄ Média SP ~61% · Bertioga ~46%</span></div>
+  <svg viewBox="0 0 720 260" class="chart"><line x1="44" x2="704" y1="226" y2="226" stroke="#E6E9EF"/><text x="36" y="230" text-anchor="end" class="ax">0%</text><line x1="44" x2="704" y1="173.5" y2="173.5" stroke="#E6E9EF"/><text x="36" y="177.5" text-anchor="end" class="ax">25%</text><line x1="44" x2="704" y1="121" y2="121" stroke="#E6E9EF"/><text x="36" y="125" text-anchor="end" class="ax">50%</text><line x1="44" x2="704" y1="68.5" y2="68.5" stroke="#E6E9EF"/><text x="36" y="72.5" text-anchor="end" class="ax">75%</text><line x1="44" x2="704" y1="16" y2="16" stroke="#E6E9EF"/><text x="36" y="20" text-anchor="end" class="ax">100%</text><text x="44" y="248" text-anchor="middle" class="ax">jan/25</text><text x="143" y="248" text-anchor="middle" class="ax">abr/25</text><text x="242" y="248" text-anchor="middle" class="ax">jul/25</text><text x="341" y="248" text-anchor="middle" class="ax">out/25</text><text x="440" y="248" text-anchor="middle" class="ax">jan/26</text><text x="539" y="248" text-anchor="middle" class="ax">abr/26</text><text x="638" y="248" text-anchor="middle" class="ax">jul/26</text><line x1="44" x2="704" y1="97.9" y2="97.9" stroke="#64748B" stroke-dasharray="5 4" stroke-width="1.4"/><line x1="44" x2="704" y1="129.39999999999998" y2="129.39999999999998" stroke="#C8A15A" stroke-dasharray="5 4" stroke-width="1.4"/><path d="M110.0 90.5 L143.0 128.0 L176.0 30.0 L209.0 72.0 L242.0 70.2 L275.0 22.8 L308.0 37.0 L341.0 70.2 L374.0 30.0 L407.0 63.4 L440.0 90.5 L473.0 106.0 L506.0 63.4 L539.0 58.0 L572.0 49.9 L605.0 16.0 L638.0 70.2 L671.0 29.5 L704.0 51.0 " fill="none" stroke="#E0765A" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="110" cy="90.50800000000001" r="2.6" fill="#E0765A"/><circle cx="143" cy="127.993" r="2.6" fill="#E0765A"/><circle cx="176" cy="30.007000000000005" r="2.6" fill="#E0765A"/><circle cx="209" cy="72.007" r="2.6" fill="#E0765A"/><circle cx="242" cy="70.201" r="2.6" fill="#E0765A"/><circle cx="275" cy="22.782999999999987" r="2.6" fill="#E0765A"/><circle cx="308" cy="37" r="2.6" fill="#E0765A"/><circle cx="341" cy="70.201" r="2.6" fill="#E0765A"/><circle cx="374" cy="30.007000000000005" r="2.6" fill="#E0765A"/><circle cx="407.00000000000006" cy="63.418000000000006" r="2.6" fill="#E0765A"/><circle cx="440" cy="90.50800000000001" r="2.6" fill="#E0765A"/><circle cx="473" cy="106.006" r="2.6" fill="#E0765A"/><circle cx="505.99999999999994" cy="63.418000000000006" r="2.6" fill="#E0765A"/><circle cx="539" cy="58" r="2.6" fill="#E0765A"/><circle cx="572" cy="49.87299999999999" r="2.6" fill="#E0765A"/><circle cx="605" cy="16" r="2.6" fill="#E0765A"/><circle cx="638" cy="70.201" r="2.6" fill="#E0765A"/><circle cx="671" cy="29.544999999999987" r="2.6" fill="#E0765A"/><circle cx="704" cy="51.007000000000005" r="2.6" fill="#E0765A"/><path d="M44.0 16.0 L77.0 53.5 L110.0 83.7 L143.0 58.0 L176.0 121.0 L209.0 128.0 L242.0 72.0 L275.0 100.0 L308.0 58.0 L341.0 56.6 L374.0 56.6 L407.0 56.6 L440.0 16.0 L473.0 43.1 L506.0 83.7 L539.0 30.0 L572.0 56.6 L605.0 170.0 L638.0 58.0 L671.0 131.2 L704.0 58.0 " fill="none" stroke="#0F9D8A" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="16" r="2.6" fill="#0F9D8A"/><circle cx="77" cy="53.506" r="2.6" fill="#0F9D8A"/><circle cx="110" cy="83.74600000000001" r="2.6" fill="#0F9D8A"/><circle cx="143" cy="58" r="2.6" fill="#0F9D8A"/><circle cx="176" cy="121" r="2.6" fill="#0F9D8A"/><circle cx="209" cy="127.993" r="2.6" fill="#0F9D8A"/><circle cx="242" cy="72.007" r="2.6" fill="#0F9D8A"/><circle cx="275" cy="100" r="2.6" fill="#0F9D8A"/><circle cx="308" cy="58" r="2.6" fill="#0F9D8A"/><circle cx="341" cy="56.63499999999999" r="2.6" fill="#0F9D8A"/><circle cx="374" cy="56.63499999999999" r="2.6" fill="#0F9D8A"/><circle cx="407.00000000000006" cy="56.63499999999999" r="2.6" fill="#0F9D8A"/><circle cx="440" cy="16" r="2.6" fill="#0F9D8A"/><circle cx="473" cy="43.09" r="2.6" fill="#0F9D8A"/><circle cx="505.99999999999994" cy="83.74600000000001" r="2.6" fill="#0F9D8A"/><circle cx="539" cy="30.007000000000005" r="2.6" fill="#0F9D8A"/><circle cx="572" cy="56.63499999999999" r="2.6" fill="#0F9D8A"/><circle cx="605" cy="169.993" r="2.6" fill="#0F9D8A"/><circle cx="638" cy="58" r="2.6" fill="#0F9D8A"/><circle cx="671" cy="131.164" r="2.6" fill="#0F9D8A"/><circle cx="704" cy="58" r="2.6" fill="#0F9D8A"/><path d="M77.0 76.0 L110.0 56.6 L143.0 51.0 L176.0 104.1 L209.0 177.0 L242.0 90.5 L275.0 124.4 L308.0 58.0 L341.0 36.3 L374.0 16.0 M440.0 22.8 L473.0 46.0 L506.0 83.7 L539.0 30.0 L572.0 83.7 L605.0 93.0 L638.0 51.0 L671.0 70.2 L704.0 79.0 " fill="none" stroke="#4C8DD6" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="77" cy="75.99699999999999" r="2.6" fill="#4C8DD6"/><circle cx="110" cy="56.63499999999999" r="2.6" fill="#4C8DD6"/><circle cx="143" cy="51.007000000000005" r="2.6" fill="#4C8DD6"/><circle cx="176" cy="104.074" r="2.6" fill="#4C8DD6"/><circle cx="209" cy="177.007" r="2.6" fill="#4C8DD6"/><circle cx="242" cy="90.50800000000001" r="2.6" fill="#4C8DD6"/><circle cx="275" cy="124.381" r="2.6" fill="#4C8DD6"/><circle cx="308" cy="58" r="2.6" fill="#4C8DD6"/><circle cx="341" cy="36.328" r="2.6" fill="#4C8DD6"/><circle cx="374" cy="16" r="2.6" fill="#4C8DD6"/><circle cx="440" cy="22.782999999999987" r="2.6" fill="#4C8DD6"/><circle cx="473" cy="46.009000000000015" r="2.6" fill="#4C8DD6"/><circle cx="505.99999999999994" cy="83.74600000000001" r="2.6" fill="#4C8DD6"/><circle cx="539" cy="30.007000000000005" r="2.6" fill="#4C8DD6"/><circle cx="572" cy="83.74600000000001" r="2.6" fill="#4C8DD6"/><circle cx="605" cy="93.007" r="2.6" fill="#4C8DD6"/><circle cx="638" cy="51.007000000000005" r="2.6" fill="#4C8DD6"/><circle cx="671" cy="70.201" r="2.6" fill="#4C8DD6"/><circle cx="704" cy="79" r="2.6" fill="#4C8DD6"/></svg>
+  <div class="src">Ocupação mensal, jan/2025 a set/2026. Linhas tracejadas: médias de mercado.</div>
+  <table style="margin-top:5mm">
+    <tr><th>Indicador</th><th>Copan 25</th><th>Copan 26*</th><th>Flat 229 · 25</th><th>Flat 229 · 26*</th><th>Flat 320 · 25</th><th>Flat 320 · 26*</th></tr>
+    <tr><td>Cotas</td><td colspan="2">4</td><td colspan="2">3</td><td colspan="2">2</td></tr>
+    <tr><td>Ocupação</td><td>78%</td><td>79%</td><td>74%</td><td>74%</td><td>73%</td><td>78%</td></tr>
+    <tr><td>Diária média (ADR)</td><td>R$ 268</td><td>R$ 262</td><td>R$ 572</td><td>R$ 551</td><td>R$ 348</td><td>R$ 444</td></tr>
+    <tr><td>RevPAR</td><td>R$ 209</td><td>R$ 208</td><td>R$ 425</td><td>R$ 410</td><td>R$ 253</td><td>R$ 345</td></tr>
+    <tr><td>Diárias vendidas</td><td>239</td><td>217</td><td>271</td><td>203</td><td>243</td><td>212</td></tr>
+    <tr><td>Check-ins</td><td>78</td><td>73</td><td>109</td><td>80</td><td>97</td><td>91</td></tr>
+    <tr><td>Giro (check-ins/mês)</td><td>7,8</td><td>8,1</td><td>9,1</td><td>8,9</td><td>8,8</td><td>10,1</td></tr>
+    <tr><td>Estadia média (noites)</td><td>3,1</td><td>3,0</td><td>2,5</td><td>2,5</td><td>2,5</td><td>2,3</td></tr>
+    <tr class="sub"><td>Receita recebida</td><td>R$ 64,6 mil</td><td>R$ 56,8 mil</td><td>R$ 156,7 mil</td><td>R$ 112,5 mil</td><td>R$ 92,7 mil</td><td>R$ 94,2 mil</td></tr>
+    <tr><td>Receita líquida locação</td><td>R$ 45,0 mil</td><td>R$ 40,0 mil</td><td>R$ 128,3 mil</td><td>R$ 93,3 mil</td><td>R$ 75,6 mil</td><td>R$ 77,8 mil</td></tr>
+  </table>
+  <div class="src">* 2026 = jan a set. Copan 2025 = mar a dez (início da operação). Receita recebida = repasses Airbnb/Booking + reservas diretas + taxa pet. Receita líquida = após comissões, lavanderia, administração e manutenção.</div>
+  <div class="foot"><b>FINHOUSE</b><span>Short Stay · Gestão & Investimento</span><span>5</span></div>
+</section>
+
+<!-- 6. TRACK RECORD 2 -->
+<section class="page">
+  <div class="eyebrow">03 · Track record</div>
+  <h2>O que aprendemos operando</h2>
+  <div class="grid3" style="margin-bottom:5mm">
+    <div class="card"><span class="pill">COPAN · SP</span><h3>Ícone urbano, giro alto</h3><p>Studio com vista no edifício mais famoso de SP. Operação 100% Airbnb, ~8 check-ins/mês e lavanderia/diarista de R$ 150 por check-in, coberta pela taxa de limpeza cobrada do hóspede. Ocupação estável de ~79% o ano todo.</p></div>
+    <div class="card"><span class="pill">FLAT 229 · RIVIERA</span><h3>Maturidade e preço</h3><p>Três anos de histórico. A diária média foi de R$ 528 (2024) para R$ 572 (2025) e a receita cresceu 14%. Canal Booking, mais reservas diretas recorrentes e taxa pet. Caixa líquido 2025 de R$ 83,8 mil.</p></div>
+    <div class="card"><span class="pill">FLAT 320 · RIVIERA</span><h3>Compra financiada</h3><p>Adquirido em 2025 por R$ 535 mil (R$ 428 mil financiados), com CAPEX de R$ 138 mil. Do ramp-up de 2025 para 2026, a ocupação foi de 73% para 78% e a diária subiu 28%. Mesmo pagando a parcela, o caixa fecha positivo em 2026 (R$ 12,3 mil até set).</p></div>
+  </div>
+  <h3>Sazonalidade na praia · receita líquida mensal do Flat 320</h3>
+  <div class="legend"><span><i style="background:#9FD8CF"></i>2025</span><span><i style="background:#0F9D8A"></i>2026</span></div>
+  <svg viewBox="0 0 720 210" class="chart"><line x1="52" x2="708" y1="170" y2="170" stroke="#E6E9EF"/><text x="44" y="174" text-anchor="end" class="ax">0k</text><line x1="52" x2="708" y1="132.5" y2="132.5" stroke="#E6E9EF"/><text x="44" y="136.5" text-anchor="end" class="ax">6k</text><line x1="52" x2="708" y1="95" y2="95" stroke="#E6E9EF"/><text x="44" y="99" text-anchor="end" class="ax">12k</text><line x1="52" x2="708" y1="57.5" y2="57.5" stroke="#E6E9EF"/><text x="44" y="61.5" text-anchor="end" class="ax">18k</text><line x1="52" x2="708" y1="20" y2="20" stroke="#E6E9EF"/><text x="44" y="24" text-anchor="end" class="ax">24k</text><rect x="57.62285714285714" y="170" width="19.99238095238095" height="0" rx="4" fill="#9FD8CF"/><text x="67.61904761904762" y="188" text-anchor="middle" class="ax">J</text><rect x="88.86095238095238" y="137.0818125" width="19.99238095238095" height="32.91818749999999" rx="4" fill="#9FD8CF"/><text x="98.85714285714286" y="188" text-anchor="middle" class="ax">F</text><rect x="120.09904761904762" y="106.6361875" width="19.99238095238095" height="63.363812499999995" rx="4" fill="#9FD8CF"/><text x="130.0952380952381" y="188" text-anchor="middle" class="ax">M</text><rect x="151.33714285714285" y="128.1603125" width="19.99238095238095" height="41.8396875" rx="4" fill="#9FD8CF"/><text x="161.33333333333331" y="188" text-anchor="middle" class="ax">A</text><rect x="182.5752380952381" y="140.8540625" width="19.99238095238095" height="29.145937500000002" rx="4" fill="#9FD8CF"/><text x="192.57142857142856" y="188" text-anchor="middle" class="ax">M</text><rect x="213.81333333333333" y="154.7464375" width="19.99238095238095" height="15.253562499999987" rx="4" fill="#9FD8CF"/><text x="223.8095238095238" y="188" text-anchor="middle" class="ax">J</text><rect x="245.05142857142857" y="134.938125" width="19.99238095238095" height="35.061874999999986" rx="4" fill="#9FD8CF"/><text x="255.04761904761904" y="188" text-anchor="middle" class="ax">J</text><rect x="276.28952380952376" y="145.056125" width="19.99238095238095" height="24.94387499999999" rx="4" fill="#9FD8CF"/><text x="286.2857142857142" y="188" text-anchor="middle" class="ax">A</text><rect x="307.52761904761905" y="121.850375" width="19.99238095238095" height="48.149625" rx="4" fill="#9FD8CF"/><text x="317.5238095238095" y="188" text-anchor="middle" class="ax">S</text><rect x="338.76571428571424" y="124.8186875" width="19.99238095238095" height="45.181312500000004" rx="4" fill="#9FD8CF"/><text x="348.7619047619047" y="188" text-anchor="middle" class="ax">O</text><rect x="370.0038095238095" y="118.5114375" width="19.99238095238095" height="51.4885625" rx="4" fill="#9FD8CF"/><text x="379.99999999999994" y="188" text-anchor="middle" class="ax">N</text><rect x="401.2419047619047" y="84.6375625" width="19.99238095238095" height="85.3624375" rx="4" fill="#9FD8CF"/><text x="411.2380952380952" y="188" text-anchor="middle" class="ax">D</text><rect x="432.47999999999996" y="29.162312500000013" width="19.99238095238095" height="140.8376875" rx="4" fill="#0F9D8A"/><text x="442.4761904761904" y="188" text-anchor="middle" class="ax">J</text><rect x="463.7180952380952" y="105.1394375" width="19.99238095238095" height="64.8605625" rx="4" fill="#0F9D8A"/><text x="473.71428571428567" y="188" text-anchor="middle" class="ax">F</text><rect x="494.95619047619044" y="129.4685625" width="19.99238095238095" height="40.53143750000001" rx="4" fill="#0F9D8A"/><text x="504.9523809523809" y="188" text-anchor="middle" class="ax">M</text><rect x="526.1942857142857" y="112.49981249999999" width="19.99238095238095" height="57.50018750000001" rx="4" fill="#0F9D8A"/><text x="536.1904761904761" y="188" text-anchor="middle" class="ax">A</text><rect x="557.432380952381" y="132.1078125" width="19.99238095238095" height="37.892187500000006" rx="4" fill="#0F9D8A"/><text x="567.4285714285714" y="188" text-anchor="middle" class="ax">M</text><rect x="588.6704761904762" y="149.8496875" width="19.99238095238095" height="20.150312500000013" rx="4" fill="#0F9D8A"/><text x="598.6666666666666" y="188" text-anchor="middle" class="ax">J</text><rect x="619.9085714285713" y="129.512625" width="19.99238095238095" height="40.487374999999986" rx="4" fill="#0F9D8A"/><text x="629.9047619047618" y="188" text-anchor="middle" class="ax">J</text><rect x="651.1466666666666" y="121.5719375" width="19.99238095238095" height="48.428062499999996" rx="4" fill="#0F9D8A"/><text x="661.1428571428571" y="188" text-anchor="middle" class="ax">A</text><rect x="682.3847619047618" y="134.5558125" width="19.99238095238095" height="35.4441875" rx="4" fill="#0F9D8A"/><text x="692.3809523809523" y="188" text-anchor="middle" class="ax">S</text></svg>
+  <div class="src">Janeiro/2026 sozinho rendeu R$ 22,5 mil, ~29% da receita líquida de jan–set. A precificação da alta temporada decide o ano.</div>
+  <h3>Alavancas que fazem a diferença</h3>
+  <div class="grid2">
+    <ul class="check">
+      <li><b>Preço dinâmico diário:</b> por antecedência, dia da semana, eventos e feriados. Na baixa temporada, aceitar 1 noite em vez de deixar o imóvel vazio.</li>
+      <li><b>Combater a ociosidade:</b> preencher as janelas de 1–2 noites entre reservas e usar descontos de última hora com piso de preço.</li>
+      <li><b>Multicanal:</b> Booking, Airbnb e reserva direta para hóspedes recorrentes, sem comissão de plataforma.</li>
+    </ul>
+    <ul class="check">
+      <li><b>Giro eficiente:</b> check-in autônomo, lavanderia terceirizada com enxoval padronizado e checklist com foto a cada saída.</li>
+      <li><b>Receitas extras:</b> taxa pet, early check-in, late checkout.</li>
+      <li><b>Controle mensal:</b> DRE por imóvel e por cota, conciliada com os relatórios das plataformas.</li>
+    </ul>
+  </div>
+  <div class="foot"><b>FINHOUSE</b><span>Short Stay · Gestão & Investimento</span><span>6</span></div>
+</section>
+
+<!-- 7. BUSINESS 1 — ESCOPO -->
+<section class="page">
+  <div class="eyebrow">04 · Business 1</div>
+  <h2>Administração Short Stay · 12%</h2>
+  <p class="lead">O proprietário continua dono do imóvel e da receita. A FINHOUSE assume a operação de ponta a ponta e presta contas todo mês.</p>
+  <div class="grid2">
+    <div class="card">
+      <h3 style="margin-top:0">Incluso nos 12%</h3>
+      <ul class="check">
+        <li>Criação e otimização dos anúncios (Airbnb, Booking, canal direto)</li>
+        <li>Precificação dinâmica diária e gestão de calendário</li>
+        <li>Gestão de ociosidade, estadia mínima e janelas entre reservas</li>
+        <li>Atendimento ao hóspede antes, durante e depois da estadia</li>
+        <li>Check-in/checkout e coordenação do giro</li>
+        <li>Coordenação de lavanderia, enxoval, diarista e amenities</li>
+        <li>Agendamento e supervisão de pequenas manutenções</li>
+        <li>Gestão de reputação, avaliações e disputas/reembolsos nas plataformas</li>
+        <li>Relatório mensal: DRE, ocupação, ADR, RevPAR e repasse</li>
+        <li>Painel online com acesso do proprietário/cotistas</li>
+      </ul>
+    </div>
+    <div>
+      <div class="card dark" style="margin-bottom:4mm">
+        <h3 style="margin-top:0">Como a taxa funciona</h3>
+        <p><b style="color:#fff">12% sobre o valor recebido das plataformas</b> e das reservas diretas, depois da comissão de Airbnb/Booking. Sem mensalidade fixa: só ganhamos quando o imóvel gera receita.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">Custos do imóvel (repassados pelo custo)</h3>
+        <table>
+          <tr><td>Lavanderia / diarista por check-in</td><td>R$ 55–150*</td></tr>
+          <tr><td>Pequenas manutenções</td><td>pelo custo</td></tr>
+          <tr><td>Reposição de amenities</td><td>pelo custo</td></tr>
+          <tr><td>Condomínio, IPTU, energia, internet</td><td>proprietário</td></tr>
+          <tr><td>Comissões Airbnb / Booking</td><td>retidas na fonte</td></tr>
+        </table>
+        <div class="src">* Varia com o tamanho do imóvel e o enxoval. Em geral é cobrada do hóspede como taxa de limpeza. Manutenções acima de R$ 500 só com aprovação prévia.</div>
+      </div>
+    </div>
+  </div>
+  <h3>KPIs que acompanhamos e reportamos</h3>
+  <div class="grid4">
+    <div class="kpi"><div class="v" style="font-size:13pt">Ocupação</div><div class="s">noites vendidas ÷ noites disponíveis</div></div>
+    <div class="kpi"><div class="v" style="font-size:13pt">ADR</div><div class="s">diária média por noite vendida</div></div>
+    <div class="kpi"><div class="v" style="font-size:13pt">RevPAR</div><div class="s">receita por noite disponível (ADR × ocupação)</div></div>
+    <div class="kpi"><div class="v" style="font-size:13pt">Giro</div><div class="s">check-ins/mês e estadia média</div></div>
+  </div>
+  <div class="foot"><b>FINHOUSE</b><span>Short Stay · Gestão & Investimento</span><span>7</span></div>
+</section>
+
+<!-- 8. BUSINESS 1 — SIMULAÇÃO -->
+<section class="page">
+  <div class="eyebrow">04 · Business 1</div>
+  <h2>Quanto sobra para o proprietário</h2>
+  <p class="lead">Simulação anual de dois imóveis-tipo com premissas calibradas pelo nosso histórico. Valores antes do imposto de renda.</p>
+  <div class="grid2">
+    <div>
+      <h3 style="margin-top:0">Studio urbano · SP <span class="pill">ref. Copan</span></h3>
+      <div class="src" style="margin-bottom:2mm">ADR R$ 310 pago pelo hóspede (≈ R$ 262 líquido, como no Copan) · ocupação 75% · estadia 3,1 noites · Airbnb 15,5%</div>
+      <table>
+  <tr><td>Receita bruta de reservas (274 noites)</td><td>R$ 84.940</td></tr>
+  <tr class="neg"><td>(–) Comissão das plataformas (Airbnb/Booking)</td><td>R$ -13.166</td></tr>
+  <tr class="sub"><td>= Repasse das plataformas</td><td>R$ 71.774</td></tr>
+  <tr class="neg"><td>(–) Lavanderia / enxoval / diarista (88 check-ins)</td><td>R$ -13.200</td></tr>
+  <tr class="neg hl"><td>(–) Administração FINHOUSE 12%</td><td>R$ -8.613</td></tr>
+  <tr class="neg"><td>(–) Pequenas manutenções / reposição</td><td>R$ -1.435</td></tr>
+  <tr class="sub"><td>= Resultado operacional da locação</td><td>R$ 48.526</td></tr>
+  <tr class="neg"><td>(–) Condomínio, IPTU, energia, internet</td><td>R$ -13.440</td></tr>
+  <tr class="total"><td>= Caixa líquido ao proprietário / ano</td><td>R$ 35.086</td></tr>
+  <tr><td>Equivalente mensal</td><td>R$ 2.924</td></tr></table>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Flat de praia · Riviera <span class="pill">ref. Flat 320</span></h3>
+      <div class="src" style="margin-bottom:2mm">ADR R$ 420 · ocupação 72% · estadia 2,5 noites · plataforma 14%</div>
+      <table>
+  <tr><td>Receita bruta de reservas (263 noites)</td><td>R$ 110.460</td></tr>
+  <tr class="neg"><td>(–) Comissão das plataformas (Airbnb/Booking)</td><td>R$ -15.464</td></tr>
+  <tr class="sub"><td>= Repasse das plataformas</td><td>R$ 94.996</td></tr>
+  <tr class="neg"><td>(–) Lavanderia / enxoval / diarista (105 check-ins)</td><td>R$ -5.775</td></tr>
+  <tr class="neg hl"><td>(–) Administração FINHOUSE 12%</td><td>R$ -11.399</td></tr>
+  <tr class="neg"><td>(–) Pequenas manutenções / reposição</td><td>R$ -2.850</td></tr>
+  <tr class="sub"><td>= Resultado operacional da locação</td><td>R$ 74.971</td></tr>
+  <tr class="neg"><td>(–) Condomínio, IPTU, energia, internet</td><td>R$ -30.300</td></tr>
+  <tr class="total"><td>= Caixa líquido ao proprietário / ano</td><td>R$ 44.671</td></tr>
+  <tr><td>Equivalente mensal</td><td>R$ 3.723</td></tr></table>
+    </div>
+  </div>
+  <h3>Short stay vs aluguel tradicional · studio SP</h3>
+  <div class="grid3">
+    <div class="kpi"><div class="v">R$ 1.797</div><div class="l">Aluguel tradicional / mês</div><div class="s">R$ 2.200 de aluguel, 10% de adm. imobiliária, 1 mês de vacância/ano. Condomínio pago pelo inquilino.</div></div>
+    <div class="kpi"><div class="v t">R$ 2.924</div><div class="l">Short stay FINHOUSE / mês</div><div class="s">Já descontados plataforma, lavanderia, 12% de adm., manutenção e todos os custos fixos.</div></div>
+    <div class="kpi"><div class="v t">+63%</div><div class="l">Renda adicional</div><div class="s">Com flexibilidade de uso próprio e reajuste de preço diário, sem esperar o aniversário do contrato.</div></div>
+  </div>
+  <div class="note">Simulações ilustrativas. O resultado real depende da localização, do padrão do imóvel, das regras do condomínio e da sazonalidade. Antes de assinar, fazemos um estudo de viabilidade com dados de mercado do endereço.</div>
+  <div class="foot"><b>FINHOUSE</b><span>Short Stay · Gestão & Investimento</span><span>8</span></div>
+</section>
+
+<!-- 9. BUSINESS 1 — ONBOARDING -->
+<section class="page">
+  <div class="eyebrow">04 · Business 1</div>
+  <h2>Do contrato à primeira reserva</h2>
+  <div class="grid2">
+    <div>
+      <div class="step"><div class="n">1</div><div><b>Diagnóstico (semana 1).</b> Visita técnica, leitura da convenção do condomínio, estudo de mercado (ADR e ocupação da região) e projeção de receita.</div></div>
+      <div class="step"><div class="n">2</div><div><b>Preparação (semanas 1–3).</b> Lista de enxoval, itens e pequenos ajustes. Fechadura eletrônica, internet e kit de boas-vindas.</div></div>
+      <div class="step"><div class="n">3</div><div><b>Anúncio (semana 3).</b> Fotos profissionais, texto e configuração em Airbnb e Booking. Regras da casa e cadastro na portaria.</div></div>
+      <div class="step"><div class="n">4</div><div><b>Lançamento (semana 4).</b> Preço de entrada para ganhar as primeiras avaliações e depois preço dinâmico.</div></div>
+      <div class="step"><div class="n">5</div><div><b>Rotina mensal.</b> Fechamento até o dia 10, com DRE, relatório de KPIs e repasse ao proprietário.</div></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Condições comerciais</h3>
+      <table>
+        <tr><td>Taxa de administração</td><td><b>12%</b></td></tr>
+        <tr><td>Base de cálculo</td><td>valor recebido</td></tr>
+        <tr><td>Mensalidade fixa</td><td>não há</td></tr>
+        <tr><td>Prazo mínimo sugerido</td><td>12 meses</td></tr>
+        <tr><td>Aviso prévio para rescisão</td><td>60 dias</td></tr>
+        <tr><td>Reservas futuras na saída</td><td>honradas</td></tr>
+        <tr><td>Fechamento e repasse</td><td>mensal</td></tr>
+      </table>
+      <h3>Para quem é</h3>
+      <ul class="check">
+        <li>Proprietários de studios e flats em SP e no litoral norte paulista</li>
+        <li>Imóveis em cotas/famílias que precisam de prestação de contas por cota</li>
+        <li>Investidores que querem renda maior sem operar o dia a dia</li>
+      </ul>
+    </div>
+  </div>
+  <h3>Padrões de serviço (SLA)</h3>
+  <div class="grid4">
+    <div class="kpi"><div class="v t">&lt; 15 min</div><div class="l">Resposta ao hóspede</div><div class="s">das 8h às 23h, todos os dias</div></div>
+    <div class="kpi"><div class="v t">100%</div><div class="l">Checklist com foto</div><div class="s">a cada saída de hóspede</div></div>
+    <div class="kpi"><div class="v t">≥ 4,8</div><div class="l">Meta de avaliação</div><div class="s">nota média nas plataformas</div></div>
+    <div class="kpi"><div class="v t">Dia 10</div><div class="l">Prestação de contas</div><div class="s">DRE, extratos e repasse</div></div>
+  </div>
+  <h3>O que o proprietário recebe todo mês</h3>
+  <div class="grid3">
+    <div class="card"><b>DRE do imóvel</b><p style="margin:1mm 0 0;font-size:8.3pt;line-height:1.45">Receita por canal, comissões, lavanderia, manutenção, taxa de administração e resultado líquido, mês a mês e acumulado no ano.</p></div>
+    <div class="card"><b>Relatório de KPIs</b><p style="margin:1mm 0 0;font-size:8.3pt;line-height:1.45">Ocupação, ADR, RevPAR, giro, estadia média e noites ociosas, comparados com o mesmo mês do ano anterior e com o mercado.</p></div>
+    <div class="card"><b>Repasse e extrato</b><p style="margin:1mm 0 0;font-size:8.3pt;line-height:1.45">Lista de reservas conciliada com Airbnb e Booking, comprovantes de despesas e repasse por cota quando houver mais de um dono.</p></div>
+  </div>
+  <div class="foot"><b>FINHOUSE</b><span>Short Stay · Gestão & Investimento</span><span>9</span></div>
+</section>
+
+<!-- 10. BUSINESS 2 — MODELO -->
+<section class="page">
+  <div class="eyebrow">05 · Business 2</div>
+  <h2>Compra & Cotização</h2>
+  <p class="lead">Juntamos investidores para comprar imóveis com vocação de temporada. A FINHOUSE seleciona, compra, prepara e opera — e cada cotista recebe sua parte do resultado todo mês, como já fazemos com o Copan (4 cotas), o Flat 229 (3 cotas) e o Flat 320 (2 cotas).</p>
+  <div class="grid4" style="margin-bottom:5mm">
+    <div class="kpi"><div class="v" style="font-size:12pt">1 · Seleção</div><div class="s">Convenção permite temporada, demanda comprovada, preço abaixo do mercado e liquidez de revenda.</div></div>
+    <div class="kpi"><div class="v" style="font-size:12pt">2 · Estruturação</div><div class="s">Condomínio civil ou SPE entre um grupo fechado de cotistas, com acordo de cotistas e regras de saída.</div></div>
+    <div class="kpi"><div class="v" style="font-size:12pt">3 · Preparação</div><div class="s">Reforma, decoração para fotos, mobília e enxoval completos.</div></div>
+    <div class="kpi"><div class="v" style="font-size:12pt">4 · Operação</div><div class="s">Gestão FINHOUSE a 12%, distribuição mensal e DRE por cota.</div></div>
+  </div>
+  <div class="grid2">
+    <div>
+      <h3 style="margin-top:0">Exemplo: flat de praia em 4 cotas</h3>
+      <table>
+        <tr><td>Preço do imóvel</td><td>R$ 550.000</td></tr>
+        <tr><td>ITBI, escritura e registro (4,5%)</td><td>R$ 24.750</td></tr>
+        <tr><td>Reforma, mobília e enxoval</td><td>R$ 75.000</td></tr>
+        <tr><td>Reserva de caixa</td><td>R$ 15.000</td></tr>
+        <tr class="sub"><td>Investimento total</td><td>R$ 664.750</td></tr>
+        <tr class="total"><td>Valor por cota (1/4)</td><td>R$ 166.188</td></tr>
+      </table>
+      <div class="src">Premissas de saída: valorização de 5% a.a., receita reajustada em 4% a.a., venda no ano 10 com 6% de custo de corretagem. Resultados antes do IR.</div>
+    </div>
+    <div>
+      <h3 style="margin-top:0">TIR por cota em 10 anos</h3>
+      <svg viewBox="0 0 420 220" class="chart"><line x1="52" x2="408" y1="180" y2="180" stroke="#E6E9EF"/><text x="44" y="184" text-anchor="end" class="ax">0%</text><line x1="52" x2="408" y1="140" y2="140" stroke="#E6E9EF"/><text x="44" y="144" text-anchor="end" class="ax">5%</text><line x1="52" x2="408" y1="100" y2="100" stroke="#E6E9EF"/><text x="44" y="104" text-anchor="end" class="ax">10%</text><line x1="52" x2="408" y1="59.999999999999986" y2="59.999999999999986" stroke="#E6E9EF"/><text x="44" y="63.999999999999986" text-anchor="end" class="ax">15%</text><line x1="52" x2="408" y1="20" y2="20" stroke="#E6E9EF"/><text x="44" y="24" text-anchor="end" class="ax">20%</text><rect x="73.36" y="128.58877087159402" width="75.94666666666667" height="51.41122912840598" rx="4" fill="#9FD8CF"/><text x="111.33333333333334" y="122.58877087159402" text-anchor="middle" class="bv">TIR 6,4%</text><text x="111.33333333333334" y="198" text-anchor="middle" class="ax">Conservador</text><text x="111.33333333333334" y="211" text-anchor="middle" class="ax small">R$ 380 · 60%</text><rect x="192.0266666666667" y="104.3910223509114" width="75.94666666666667" height="75.6089776490886" rx="4" fill="#0F9D8A"/><text x="230.00000000000003" y="98.3910223509114" text-anchor="middle" class="bv">TIR 9,5%</text><text x="230.00000000000003" y="198" text-anchor="middle" class="ax">Base</text><text x="230.00000000000003" y="211" text-anchor="middle" class="ax small">R$ 420 · 72%</text><rect x="310.6933333333334" y="80.42904999489855" width="75.94666666666667" height="99.57095000510145" rx="4" fill="#9FD8CF"/><text x="348.66666666666674" y="74.42904999489855" text-anchor="middle" class="bv">TIR 12,4%</text><text x="348.66666666666674" y="198" text-anchor="middle" class="ax">Otimista</text><text x="348.66666666666674" y="211" text-anchor="middle" class="ax small">R$ 470 · 80%</text></svg>
+    </div>
+  </div>
+  <table style="margin-top:4mm">
+    <tr><th>Cenário</th><th>ADR · Ocupação</th><th>Receita bruta</th><th>Caixa líquido/ano</th><th>Yield caixa</th><th>Por cota/mês</th><th>Payback (só caixa)</th><th>TIR 10a</th></tr>
+    <tr><td>Conservador</td><td>R$ 380 · 60%</td><td>R$ 83,2 mil</td><td>R$ 25,1 mil</td><td>3,8%</td><td>R$ 523</td><td>26,5 anos</td><td>6,4%</td></tr><tr class="hl"><td>Base</td><td>R$ 420 · 72%</td><td>R$ 110,5 mil</td><td>R$ 44,1 mil</td><td>6,6%</td><td>R$ 918</td><td>15,1 anos</td><td>9,5%</td></tr><tr><td>Otimista</td><td>R$ 470 · 80%</td><td>R$ 137,2 mil</td><td>R$ 63,0 mil</td><td>9,5%</td><td>R$ 1.312</td><td>10,6 anos</td><td>12,4%</td></tr>
+  </table>
+  <div class="foot"><b>FINHOUSE</b><span>Short Stay · Gestão & Investimento</span><span>10</span></div>
+</section>
+
+<!-- 11. BUSINESS 2 — CRITÉRIOS E CASES -->
+<section class="page">
+  <div class="eyebrow">05 · Business 2</div>
+  <h2>Critérios e provas de conceito</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3 style="margin-top:0">Checklist de aquisição</h3>
+      <ul class="check">
+        <li>Convenção e regimento permitem locação por temporada (ou condomínio já é “short stay friendly”)</li>
+        <li>Região com ocupação de mercado ≥ 55% ou sazonalidade forte com ADR alta</li>
+        <li>Yield caixa projetado ≥ 6% a.a. no cenário base, antes da valorização</li>
+        <li>Condomínio ≤ 25% da receita projetada</li>
+        <li>Diferencial de anúncio: vista, piscina, ícone arquitetônico, pé na areia</li>
+        <li>Liquidez de revenda e documentação limpa</li>
+      </ul>
+    </div>
+    <div class="card dark">
+      <h3 style="margin-top:0">Modelo de remuneração FINHOUSE</h3>
+      <ul>
+        <li><b style="color:#fff">12%</b> de administração sobre o valor recebido, igual ao Business 1</li>
+        <li>Taxa de estruturação na aquisição: <i>a definir</i> (cobre a busca do imóvel, a due diligence, a reforma e a montagem)</li>
+        <li>FINHOUSE pode ficar com uma cota, alinhando interesses com os investidores</li>
+      </ul>
+      <h3>Direitos do cotista</h3>
+      <ul>
+        <li>Distribuição mensal do caixa líquido</li>
+        <li>Painel online com DRE e extratos</li>
+        <li>Uso próprio opcional, em datas de baixa temporada</li>
+      </ul>
+    </div>
+  </div>
+  <h3>Provas de conceito na carteira atual</h3>
+  <table>
+    <tr><th>Imóvel</th><th>Estrutura</th><th>Valor ref.</th><th>Receita recebida 2025</th><th>Caixa líquido 2025</th><th>Leitura</th></tr>
+    <tr><td>Copan · SP</td><td>4 cotas</td><td>—</td><td>R$ 64,6 mil</td><td>R$ 45,0 mil**</td><td style="text-align:right;white-space:normal">Giro urbano estável</td></tr>
+    <tr><td>Flat 229 · Riviera</td><td>3 cotas, sem dívida</td><td>R$ 900 mil</td><td>R$ 156,7 mil</td><td>R$ 83,8 mil</td><td style="text-align:right;white-space:normal">Yield caixa ~9,3% a.a.</td></tr>
+    <tr><td>Flat 320 · Riviera</td><td>2 cotas, financiado</td><td>R$ 535 mil</td><td>R$ 92,7 mil</td><td>R$ -4,2 mil</td><td style="text-align:right;white-space:normal">Caixa positivo em 2026 já pagando a parcela</td></tr>
+  </table>
+  <div class="src">** Receita líquida da locação, antes dos custos fixos do imóvel. Caixa líquido = após condomínio, IPTU, energia e financiamento.</div>
+  <h3>Cronograma típico de uma aquisição</h3>
+  <div class="grid4">
+    <div class="kpi"><div class="v" style="font-size:12pt">Mês 0–1</div><div class="s">Tese, seleção e estudo de viabilidade do imóvel-alvo. Apresentação aos investidores.</div></div>
+    <div class="kpi"><div class="v" style="font-size:12pt">Mês 1–2</div><div class="s">Adesão dos cotistas, due diligence, proposta, escritura e registro.</div></div>
+    <div class="kpi"><div class="v" style="font-size:12pt">Mês 2–4</div><div class="s">Reforma, mobília, enxoval, fotos e anúncios.</div></div>
+    <div class="kpi"><div class="v t" style="font-size:12pt">Mês 4+</div><div class="s">Operação e primeira distribuição aos cotistas.</div></div>
+  </div>
+  <div class="foot"><b>FINHOUSE</b><span>Short Stay · Gestão & Investimento</span><span>11</span></div>
+</section>
+
+<!-- 12. TECNOLOGIA, RISCOS, PRÓXIMOS PASSOS -->
+<section class="page">
+  <div class="eyebrow">06 · Tecnologia, riscos e próximos passos</div>
+  <h2>Transparência total, riscos mapeados</h2>
+  <div class="grid2">
+    <div class="card teal">
+      <h3 style="margin-top:0">Plataforma bnbmanager</h3>
+      <p>Sistema próprio de gestão e DRE de locação por temporada:</p>
+      <ul>
+        <li>DRE mensal por imóvel, do mesmo jeito que as planilhas de controle</li>
+        <li>Visão dos sócios: resultado por cota</li>
+        <li>Importação dos relatórios de Airbnb e Booking, com cálculo automático de diárias, ocupação, lavanderia e taxa de administração</li>
+        <li>Acesso web seguro para proprietários e cotistas</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Principais riscos e mitigação</h3>
+      <table>
+        <tr><th>Risco</th><th>Mitigação</th></tr>
+        <tr><td>Restrição condominial</td><td>Due diligence da convenção</td></tr>
+        <tr><td>Sazonalidade / vacância</td><td>Preço dinâmico, multicanal</td></tr>
+        <tr><td>Danos e hóspedes</td><td>Caução/seguro das plataformas</td></tr>
+        <tr><td>Tributação (IBS/CBS, IR)</td><td>Planejamento contábil por estrutura</td></tr>
+        <tr><td>Oferta de cotas (CVM)</td><td>Grupo fechado, assessoria jurídica</td></tr>
+        <tr><td>Liquidez da cota</td><td>Acordo de cotistas com preferência</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="note">Captar investidores para empreendimentos imobiliários com gestão hoteleira pode ser enquadrado como contrato de investimento coletivo (CIC) e cair sob a regulação da CVM. O Business 2 será estruturado com assessoria jurídica, preferencialmente entre um grupo restrito de investidores conhecidos e sem oferta pública.</div>
+  <h3>Próximos passos</h3>
+  <div class="grid3">
+    <div class="kpi"><div class="v t" style="font-size:13pt">Proprietário</div><div class="s">Agende o diagnóstico gratuito: receita projetada para o seu imóvel em até 7 dias.</div></div>
+    <div class="kpi"><div class="v t" style="font-size:13pt">Investidor</div><div class="s">Entre na lista da próxima aquisição e receba o estudo do imóvel-alvo.</div></div>
+    <div class="kpi"><div class="v t" style="font-size:13pt">Parceiro</div><div class="s">Corretores e condomínios: indique imóveis e ganhe comissão.</div></div>
+  </div>
+  <div class="card dark" style="margin-top:6mm; text-align:center">
+    <div style="font-weight:800; letter-spacing:5px; font-size:13pt">FIN<span style="color:#C8A15A">HOUSE</span></div>
+    <p style="margin:2mm 0 0">Short Stay · Gestão & Investimento · São Paulo &amp; Riviera de São Lourenço</p>
+  </div>
+  <div class="src" style="margin-top:4mm">Fontes de mercado: AirDNA, Airbtics, Guest Favorites, PriceLabs, sites e reportagens sobre Housi, Seazone e Charlie, STJ (2ª Seção), LC 214/2025. Dados FINHOUSE: controle financeiro interno (bnbmanager), jan/2024 a set/2026. Este documento é informativo e não é oferta de valores mobiliários. Rentabilidade passada e simulações não garantem resultado futuro.</div>
+  <div class="foot"><b>FINHOUSE</b><span>Short Stay · Gestão & Investimento</span><span>12</span></div>
+</section>
+</body></html>
