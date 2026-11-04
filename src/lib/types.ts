@@ -5,6 +5,12 @@ export interface ColumnDef {
   label: string;
   col: number;
   isTotal: boolean;
+  metadata?: {
+    diariasAirbnb?: number;
+    diariasBooking?: number;
+    checkinsAirbnb?: number;
+    checkinsBooking?: number;
+  };
 }
 
 export interface RowDef {

@@ -56,12 +56,12 @@ export function consolidateMonthData(
   const receitaBooking = bookingData ? bookingData.receitaBooking : getExisting("receita_booking");
   const comissaoBooking = bookingData ? bookingData.comissaoBooking : getExisting("comissao_booking");
 
-  // Breakdown storage: rows for tracking each platform's share so re-uploads cleanly replace only their platform
-  // diarias_airbnb, diarias_booking, checkins_airbnb, checkins_booking
-  const prevDiariasAirbnb = getExisting("diarias_airbnb");
-  const prevDiariasBooking = getExisting("diarias_booking");
-  const prevCheckinsAirbnb = getExisting("checkins_airbnb");
-  const prevCheckinsBooking = getExisting("checkins_booking");
+  // Breakdown storage: read from column metadata if available, otherwise estimate
+  const existingCol = existingData?.columns.find((c) => c.key === monthKey);
+  const prevDiariasAirbnb = existingCol?.metadata?.diariasAirbnb ?? getExisting("diarias_airbnb");
+  const prevDiariasBooking = existingCol?.metadata?.diariasBooking ?? getExisting("diarias_booking");
+  const prevCheckinsAirbnb = existingCol?.metadata?.checkinsAirbnb ?? getExisting("checkins_airbnb");
+  const prevCheckinsBooking = existingCol?.metadata?.checkinsBooking ?? getExisting("checkins_booking");
 
   let finalDiariasAirbnb = 0;
   let finalDiariasBooking = 0;
@@ -181,7 +181,14 @@ export function applyConsolidatedToPropertyData(
   const cloned: PropertyData = JSON.parse(JSON.stringify(propertyData));
   const { monthKey } = result;
 
-  // 1. Ensure column definition exists
+  // 1. Ensure column definition exists and save metadata
+  const metadata = {
+    diariasAirbnb: result.diariasAirbnb,
+    diariasBooking: result.diariasBooking,
+    checkinsAirbnb: result.checkinsAirbnb,
+    checkinsBooking: result.checkinsBooking,
+  };
+
   const existingColIdx = cloned.columns.findIndex((c) => c.key === monthKey);
   if (existingColIdx >= 0) {
     cloned.columns[existingColIdx] = {
@@ -191,6 +198,7 @@ export function applyConsolidatedToPropertyData(
       label: result.label,
       col: cloned.columns[existingColIdx].col,
       isTotal: false,
+      metadata,
     };
   } else {
     // Append or insert before totals
@@ -202,17 +210,23 @@ export function applyConsolidatedToPropertyData(
       label: result.label,
       col: nextColNum,
       isTotal: false,
+      metadata,
     });
   }
 
+  // Remove unwanted internal breakdown rows if they were previously created
+  cloned.rows = cloned.rows.filter(
+    (r) => !["diarias_airbnb", "diarias_booking", "checkins_airbnb", "checkins_booking"].includes(r.id)
+  );
+
   // 2. Helper to set row value
-  const setVal = (rowId: string, val: number | string | null) => {
+  const setVal = (rowId: string, val: number | string | null, rowType: "currency" | "int" | "percent" = "currency") => {
     let row = cloned.rows.find((r) => r.id === rowId);
     if (!row) {
       row = {
         id: rowId,
         label: rowId,
-        type: typeof val === "number" ? "currency" : "int",
+        type: rowType,
         values: {},
       };
       cloned.rows.push(row);
@@ -220,24 +234,20 @@ export function applyConsolidatedToPropertyData(
     row.values[monthKey] = val;
   };
 
-  setVal("dias_no_mes", result.diasNoMes);
-  setVal("ocupacao", result.ocupacao);
-  setVal("diarias", result.diarias);
-  if (result.diariasAirbnb !== undefined) setVal("diarias_airbnb", result.diariasAirbnb);
-  if (result.diariasBooking !== undefined) setVal("diarias_booking", result.diariasBooking);
-  setVal("checkins", result.checkins);
-  if (result.checkinsAirbnb !== undefined) setVal("checkins_airbnb", result.checkinsAirbnb);
-  if (result.checkinsBooking !== undefined) setVal("checkins_booking", result.checkinsBooking);
-  setVal("media_diaria_hospede", result.mediaDiariaHospede);
-  setVal("media_diaria_liquido", result.mediaDiariaLiquido);
-  setVal("receita_booking", result.receitaBooking);
-  setVal("receita_airbnb", result.receitaAirbnb);
-  setVal("receita_offsite", result.receitaOffsite);
-  setVal("diarias_pet", result.diariasPet);
-  setVal("comissao_booking", result.comissaoBooking);
-  setVal("lavanderia_diarista", result.lavanderia);
-  setVal("administracao", result.administracao);
-  setVal("receita_liquida_locacao", result.receitaLiquida);
+  setVal("dias_no_mes", result.diasNoMes, "int");
+  setVal("ocupacao", result.ocupacao, "percent");
+  setVal("diarias", result.diarias, "int");
+  setVal("checkins", result.checkins, "int");
+  setVal("media_diaria_hospede", result.mediaDiariaHospede, "currency");
+  setVal("media_diaria_liquido", result.mediaDiariaLiquido, "currency");
+  setVal("receita_booking", result.receitaBooking, "currency");
+  setVal("receita_airbnb", result.receitaAirbnb, "currency");
+  setVal("receita_offsite", result.receitaOffsite, "currency");
+  setVal("diarias_pet", result.diariasPet, "currency");
+  setVal("comissao_booking", result.comissaoBooking, "currency");
+  setVal("lavanderia_diarista", result.lavanderia, "currency");
+  setVal("administracao", result.administracao, "currency");
+  setVal("receita_liquida_locacao", result.receitaLiquida, "currency");
 
   // Recalculate Fixed Expenses & FC Operacional for that month if fixed expenses exist
   const getRowVal = (id: string) => {

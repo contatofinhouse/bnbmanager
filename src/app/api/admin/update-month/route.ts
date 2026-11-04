@@ -21,8 +21,14 @@ export async function POST(request: NextRequest) {
     const currentData = await getPropertyData(propertyId);
     const cloned = JSON.parse(JSON.stringify(currentData));
 
-    // Ensure column exists
+    // Ensure column exists and save breakdown metadata
     const existingColIndex = cloned.columns.findIndex((c: any) => c.key === parsedResult.monthKey);
+    const metadata = {
+      diariasAirbnb: parsedResult.diariasAirbnb,
+      diariasBooking: parsedResult.diariasBooking,
+      checkinsAirbnb: parsedResult.checkinsAirbnb,
+      checkinsBooking: parsedResult.checkinsBooking,
+    };
 
     if (existingColIndex === -1) {
       const nextCol = cloned.columns.length > 0 ? Math.max(...cloned.columns.map((c: any) => c.col)) + 1 : 1;
@@ -33,14 +39,23 @@ export async function POST(request: NextRequest) {
         label: parsedResult.label,
         col: nextCol,
         isTotal: false,
+        metadata,
       });
+    } else {
+      cloned.columns[existingColIndex].metadata = metadata;
     }
 
+    // Filter out internal breakdown rows if previously present
+    cloned.rows = cloned.rows.filter(
+      (r: any) => !["diarias_airbnb", "diarias_booking", "checkins_airbnb", "checkins_booking"].includes(r.id)
+    );
+
     // Helper to set row values
-    const setVal = (rowId: string, val: number | string | null) => {
+    const setVal = (rowId: string, val: number | string | null, rowType?: "currency" | "int" | "percent") => {
       let row = cloned.rows.find((r: any) => r.id === rowId);
       if (!row) {
-        row = { id: rowId, label: rowId, type: typeof val === "number" ? "currency" : "int", values: {} };
+        const defaultType = rowType || (typeof val === "number" ? "currency" : "int");
+        row = { id: rowId, label: rowId, type: defaultType, values: {} };
         cloned.rows.push(row);
       }
       row.values[parsedResult.monthKey] = val;
@@ -64,14 +79,10 @@ export async function POST(request: NextRequest) {
       if (m.receita_liquida_locacao !== undefined) setVal("receita_liquida_locacao", m.receita_liquida_locacao);
     } else {
       // Direct consolidated result format
-      if (parsedResult.diasNoMes !== undefined) setVal("dias_no_mes", parsedResult.diasNoMes);
-      if (parsedResult.ocupacao !== undefined) setVal("ocupacao", parsedResult.ocupacao);
-      if (parsedResult.diarias !== undefined) setVal("diarias", parsedResult.diarias);
-      if (parsedResult.diariasAirbnb !== undefined) setVal("diarias_airbnb", parsedResult.diariasAirbnb);
-      if (parsedResult.diariasBooking !== undefined) setVal("diarias_booking", parsedResult.diariasBooking);
-      if (parsedResult.checkins !== undefined) setVal("checkins", parsedResult.checkins);
-      if (parsedResult.checkinsAirbnb !== undefined) setVal("checkins_airbnb", parsedResult.checkinsAirbnb);
-      if (parsedResult.checkinsBooking !== undefined) setVal("checkins_booking", parsedResult.checkinsBooking);
+      if (parsedResult.diasNoMes !== undefined) setVal("dias_no_mes", parsedResult.diasNoMes, "int");
+      if (parsedResult.ocupacao !== undefined) setVal("ocupacao", parsedResult.ocupacao, "percent");
+      if (parsedResult.diarias !== undefined) setVal("diarias", parsedResult.diarias, "int");
+      if (parsedResult.checkins !== undefined) setVal("checkins", parsedResult.checkins, "int");
       if (parsedResult.mediaDiariaHospede !== undefined) setVal("media_diaria_hospede", parsedResult.mediaDiariaHospede);
       if (parsedResult.mediaDiariaLiquido !== undefined) setVal("media_diaria_liquido", parsedResult.mediaDiariaLiquido);
       if (parsedResult.receitaAirbnb !== undefined) setVal("receita_airbnb", parsedResult.receitaAirbnb);
