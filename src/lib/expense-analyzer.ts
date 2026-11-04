@@ -129,7 +129,7 @@ export async function analyzePdfDocument(
   }
 
   // --- Categorize ---
-  let categoria = "outros";
+  let categoria = "manutencao";
   let confianca = 0.75;
 
   if (fornecedor.includes("Neoenergia") || fornecedor.includes("Enel") || upperText.includes("ENERGIA ELETRICA") || upperText.includes("KWH")) {
@@ -273,8 +273,8 @@ export function analyzeBankStatementText(csvText: string, defaultPropertyId: str
 
     if (val <= 0) continue;
 
-    let categoria = "outros";
-    let categoriaLabel = "Outras Despesas";
+    let categoria = "manutencao";
+    let categoriaLabel = "Manutenção / Reposição";
     let fornecedor = desc;
     let tipo: "despesa" | "receita" = isCredito ? "receita" : "despesa";
     let diarias = isCredito ? 1 : 0;

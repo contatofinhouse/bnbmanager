@@ -39,6 +39,20 @@ export async function POST(request: NextRequest) {
     const additionalDiarias = typeof body.diarias === "number" ? Math.max(0, body.diarias) : 0;
     const itemData = body.data || null;
 
+    // Ensure target row exists with proper label and type
+    const categoryLabels: Record<string, string> = {
+      condominio: "Condomínio",
+      energia_eletrica: "Energia Elétrica",
+      iptu: "IPTU",
+      financiamento: "Financiamento Imobiliário",
+      manutencao: "Manutenção / Reposição",
+      capex: "CAPEX / Investimentos",
+      lavanderia_diarista: "Lavanderia / Diarista",
+      receita_offsite: "Receita Off Booking (Locação Direta)",
+      diarias_pet: "Diárias Pet",
+      outros: "Outras Despesas",
+    };
+
     // Helper to get row value
     const getVal = (id: string): number => {
       const r = cloned.rows.find((x: any) => x.id === id);
@@ -50,7 +64,7 @@ export async function POST(request: NextRequest) {
     const setVal = (id: string, val: number | string | null, type: "currency" | "int" | "percent" = "currency", isHighlight = false) => {
       let r = cloned.rows.find((x: any) => x.id === id);
       if (!r) {
-        r = { id, label: id, type, isHighlight, values: {} };
+        r = { id, label: categoryLabels[id] || id, type, isHighlight, values: {} };
         cloned.rows.push(r);
       }
       r.values[monthKey] = val;
@@ -118,11 +132,12 @@ export async function POST(request: NextRequest) {
     const fin = getVal("financiamento");
     const manut = getVal("manutencao");
     const capex = getVal("capex");
+    const outros = getVal("outros");
 
     const totalFixas = Math.round((cond + luz + iptu + fin) * 100) / 100;
     setVal("total_despesas_fixas", totalFixas);
 
-    const fcOperacional = Math.round((liqLocacao + cond + luz + iptu + fin + manut + capex) * 100) / 100;
+    const fcOperacional = Math.round((liqLocacao + cond + luz + iptu + fin + manut + capex + outros) * 100) / 100;
     setVal("fc_operacional", fcOperacional, "currency", true);
 
     // If row saldo_conta exists, keep it in sync

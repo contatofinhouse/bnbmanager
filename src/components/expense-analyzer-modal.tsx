@@ -147,24 +147,31 @@ export function ExpenseAnalyzerModal({
   const handleApplyStatementItem = async (item: ExpenseExtractedItem) => {
     try {
       const isReceita = item.categoria === "receita_offsite" || item.tipo === "receita";
-      await fetch("/api/expenses/apply", {
+      const res = await fetch("/api/expenses/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           propertyId: item.imovelSugerido || activePropertyId,
-          monthKey: item.mesCompetencia || "2026-09",
-          categoria: item.categoria || "outros",
+          monthKey: item.mesCompetencia || selectedMonth || "2026-09",
+          categoria: item.categoria || "manutencao",
           valor: item.valor,
-          fornecedor: item.fornecedor,
+          fornecedor: item.fornecedor || item.descricao,
           data: item.data,
           diarias: isReceita ? (item.diarias !== undefined ? item.diarias : 1) : 0,
           tipo: isReceita ? "receita" : "despesa",
         }),
       });
+
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        throw new Error(json.error || "Falha ao gravar item na DRE");
+      }
+
       setStatementItems((prev) => prev.filter((i) => i !== item));
       if (onExpenseApplied) onExpenseApplied();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert("Erro ao lançar item: " + (e.message || "Falha na requisição"));
     }
   };
 
@@ -191,6 +198,7 @@ export function ExpenseAnalyzerModal({
 
   const handleApplyAllStatementItems = async () => {
     setIsApplying(true);
+    setError(null);
     try {
       for (const item of [...statementItems]) {
         await handleApplyStatementItem(item);
@@ -201,7 +209,7 @@ export function ExpenseAnalyzerModal({
         onClose();
       }, 1500);
     } catch (err: any) {
-      setError(err.message || "Erro ao aplicar lançamentos em lote");
+      setError(err.message || "Erro ao processar lançamentos em lote");
     } finally {
       setIsApplying(false);
     }
