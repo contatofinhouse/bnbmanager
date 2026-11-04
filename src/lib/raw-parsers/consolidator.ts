@@ -9,7 +9,11 @@ export interface ConsolidatedMonthResult {
   label: string;
   diasNoMes: number;
   diarias: number;
+  diariasAirbnb?: number;
+  diariasBooking?: number;
   checkins: number;
+  checkinsAirbnb?: number;
+  checkinsBooking?: number;
   ocupacao: number;
   receitaAirbnb: number;
   receitaBooking: number;
@@ -52,79 +56,59 @@ export function consolidateMonthData(
   const receitaBooking = bookingData ? bookingData.receitaBooking : getExisting("receita_booking");
   const comissaoBooking = bookingData ? bookingData.comissaoBooking : getExisting("comissao_booking");
 
-  // Sum diarias and checkins preserving the other platform if already imported
-  // When importing Airbnb alone, if Booking was already recorded, keep the Booking portion
-  // When importing Booking alone, if Airbnb was already recorded, keep the Airbnb portion
-  let totalDiarias = 0;
-  if (airbnbData && bookingData) {
-    totalDiarias = airbnbData.diarias + bookingData.diarias;
-  } else if (airbnbData) {
-    // If Booking already had revenue in this month, add the existing diarias (which belonged to booking)
-    // If Airbnb was never present before, existing diarias belonged entirely to Booking.
-    const prevAirbnbRevenue = getExisting("receita_airbnb");
-    const prevBookingRevenue = getExisting("receita_booking");
-    const existingDiarias = getExisting("diarias");
+  // Breakdown storage: rows for tracking each platform's share so re-uploads cleanly replace only their platform
+  // diarias_airbnb, diarias_booking, checkins_airbnb, checkins_booking
+  const prevDiariasAirbnb = getExisting("diarias_airbnb");
+  const prevDiariasBooking = getExisting("diarias_booking");
+  const prevCheckinsAirbnb = getExisting("checkins_airbnb");
+  const prevCheckinsBooking = getExisting("checkins_booking");
 
-    if (prevBookingRevenue > 0 && prevAirbnbRevenue <= 0) {
-      // First time importing Airbnb after Booking: sum Airbnb + Booking
-      totalDiarias = airbnbData.diarias + existingDiarias;
-    } else if (prevBookingRevenue > 0 && prevAirbnbRevenue > 0) {
-      // Updating an already consolidated month: estimate booking portion by ratio or keep delta
-      const estBookingDiarias = Math.max(0, Math.round(existingDiarias * (prevBookingRevenue / (prevBookingRevenue + prevAirbnbRevenue))));
-      totalDiarias = airbnbData.diarias + estBookingDiarias;
-    } else {
-      totalDiarias = airbnbData.diarias;
+  let finalDiariasAirbnb = 0;
+  let finalDiariasBooking = 0;
+  let finalCheckinsAirbnb = 0;
+  let finalCheckinsBooking = 0;
+
+  if (airbnbData && bookingData) {
+    // Both uploaded simultaneously
+    finalDiariasAirbnb = airbnbData.diarias;
+    finalDiariasBooking = bookingData.diarias;
+    finalCheckinsAirbnb = airbnbData.checkins;
+    finalCheckinsBooking = bookingData.checkins;
+  } else if (airbnbData) {
+    // Replacing Airbnb data: discard previous airbnb portion, keep booking portion
+    finalDiariasAirbnb = airbnbData.diarias;
+    finalCheckinsAirbnb = airbnbData.checkins;
+
+    if (prevDiariasBooking > 0) {
+      finalDiariasBooking = prevDiariasBooking;
+      finalCheckinsBooking = prevCheckinsBooking;
+    } else if (getExisting("receita_booking") > 0) {
+      // Fallback if imported before explicit breakdown was stored
+      finalDiariasBooking = Math.max(0, getExisting("diarias") - prevDiariasAirbnb);
+      finalCheckinsBooking = Math.max(0, getExisting("checkins") - prevCheckinsAirbnb);
     }
   } else if (bookingData) {
-    const prevAirbnbRevenue = getExisting("receita_airbnb");
-    const prevBookingRevenue = getExisting("receita_booking");
-    const existingDiarias = getExisting("diarias");
+    // Replacing Booking data: discard previous booking portion, keep airbnb portion
+    finalDiariasBooking = bookingData.diarias;
+    finalCheckinsBooking = bookingData.checkins;
 
-    if (prevAirbnbRevenue > 0 && prevBookingRevenue <= 0) {
-      // First time importing Booking after Airbnb: sum Booking + Airbnb
-      totalDiarias = bookingData.diarias + existingDiarias;
-    } else if (prevAirbnbRevenue > 0 && prevBookingRevenue > 0) {
-      const estAirbnbDiarias = Math.max(0, Math.round(existingDiarias * (prevAirbnbRevenue / (prevBookingRevenue + prevAirbnbRevenue))));
-      totalDiarias = bookingData.diarias + estAirbnbDiarias;
-    } else {
-      totalDiarias = bookingData.diarias;
+    if (prevDiariasAirbnb > 0) {
+      finalDiariasAirbnb = prevDiariasAirbnb;
+      finalCheckinsAirbnb = prevCheckinsAirbnb;
+    } else if (getExisting("receita_airbnb") > 0) {
+      // Fallback if imported before explicit breakdown was stored
+      finalDiariasAirbnb = Math.max(0, getExisting("diarias") - prevDiariasBooking);
+      finalCheckinsAirbnb = Math.max(0, getExisting("checkins") - prevCheckinsBooking);
     }
   } else {
-    totalDiarias = getExisting("diarias");
+    finalDiariasAirbnb = prevDiariasAirbnb;
+    finalDiariasBooking = prevDiariasBooking;
+    finalCheckinsAirbnb = prevCheckinsAirbnb;
+    finalCheckinsBooking = prevCheckinsBooking;
   }
 
-  let totalCheckins = 0;
-  if (airbnbData && bookingData) {
-    totalCheckins = airbnbData.checkins + bookingData.checkins;
-  } else if (airbnbData) {
-    const prevAirbnbRevenue = getExisting("receita_airbnb");
-    const prevBookingRevenue = getExisting("receita_booking");
-    const existingCheckins = getExisting("checkins");
-
-    if (prevBookingRevenue > 0 && prevAirbnbRevenue <= 0) {
-      totalCheckins = airbnbData.checkins + existingCheckins;
-    } else if (prevBookingRevenue > 0 && prevAirbnbRevenue > 0) {
-      const estBookingCheckins = Math.max(0, Math.round(existingCheckins * (prevBookingRevenue / (prevBookingRevenue + prevAirbnbRevenue))));
-      totalCheckins = airbnbData.checkins + estBookingCheckins;
-    } else {
-      totalCheckins = airbnbData.checkins;
-    }
-  } else if (bookingData) {
-    const prevAirbnbRevenue = getExisting("receita_airbnb");
-    const prevBookingRevenue = getExisting("receita_booking");
-    const existingCheckins = getExisting("checkins");
-
-    if (prevAirbnbRevenue > 0 && prevBookingRevenue <= 0) {
-      totalCheckins = bookingData.checkins + existingCheckins;
-    } else if (prevAirbnbRevenue > 0 && prevBookingRevenue > 0) {
-      const estAirbnbCheckins = Math.max(0, Math.round(existingCheckins * (prevAirbnbRevenue / (prevBookingRevenue + prevAirbnbRevenue))));
-      totalCheckins = bookingData.checkins + estAirbnbCheckins;
-    } else {
-      totalCheckins = bookingData.checkins;
-    }
-  } else {
-    totalCheckins = getExisting("checkins");
-  }
+  const totalDiarias = finalDiariasAirbnb + finalDiariasBooking || getExisting("diarias");
+  const totalCheckins = finalCheckinsAirbnb + finalCheckinsBooking || getExisting("checkins");
 
   const ocupacao = diasNoMes > 0 ? Math.round((totalDiarias / diasNoMes) * 10000) / 10000 : 0;
 
@@ -170,7 +154,11 @@ export function consolidateMonthData(
     label: `${monthLabels[mIndex]}/${String(year).slice(-2)}`,
     diasNoMes,
     diarias: totalDiarias,
+    diariasAirbnb: finalDiariasAirbnb,
+    diariasBooking: finalDiariasBooking,
     checkins: totalCheckins,
+    checkinsAirbnb: finalCheckinsAirbnb,
+    checkinsBooking: finalCheckinsBooking,
     ocupacao,
     receitaAirbnb,
     receitaBooking,
@@ -235,7 +223,11 @@ export function applyConsolidatedToPropertyData(
   setVal("dias_no_mes", result.diasNoMes);
   setVal("ocupacao", result.ocupacao);
   setVal("diarias", result.diarias);
+  if (result.diariasAirbnb !== undefined) setVal("diarias_airbnb", result.diariasAirbnb);
+  if (result.diariasBooking !== undefined) setVal("diarias_booking", result.diariasBooking);
   setVal("checkins", result.checkins);
+  if (result.checkinsAirbnb !== undefined) setVal("checkins_airbnb", result.checkinsAirbnb);
+  if (result.checkinsBooking !== undefined) setVal("checkins_booking", result.checkinsBooking);
   setVal("media_diaria_hospede", result.mediaDiariaHospede);
   setVal("media_diaria_liquido", result.mediaDiariaLiquido);
   setVal("receita_booking", result.receitaBooking);

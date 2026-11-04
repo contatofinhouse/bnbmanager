@@ -67,7 +67,11 @@ export async function POST(request: NextRequest) {
       if (parsedResult.diasNoMes !== undefined) setVal("dias_no_mes", parsedResult.diasNoMes);
       if (parsedResult.ocupacao !== undefined) setVal("ocupacao", parsedResult.ocupacao);
       if (parsedResult.diarias !== undefined) setVal("diarias", parsedResult.diarias);
+      if (parsedResult.diariasAirbnb !== undefined) setVal("diarias_airbnb", parsedResult.diariasAirbnb);
+      if (parsedResult.diariasBooking !== undefined) setVal("diarias_booking", parsedResult.diariasBooking);
       if (parsedResult.checkins !== undefined) setVal("checkins", parsedResult.checkins);
+      if (parsedResult.checkinsAirbnb !== undefined) setVal("checkins_airbnb", parsedResult.checkinsAirbnb);
+      if (parsedResult.checkinsBooking !== undefined) setVal("checkins_booking", parsedResult.checkinsBooking);
       if (parsedResult.mediaDiariaHospede !== undefined) setVal("media_diaria_hospede", parsedResult.mediaDiariaHospede);
       if (parsedResult.mediaDiariaLiquido !== undefined) setVal("media_diaria_liquido", parsedResult.mediaDiariaLiquido);
       if (parsedResult.receitaAirbnb !== undefined) setVal("receita_airbnb", parsedResult.receitaAirbnb);
