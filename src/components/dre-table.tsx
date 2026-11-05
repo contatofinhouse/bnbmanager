@@ -10,6 +10,11 @@ interface DreTableProps {
 }
 
 export function DreTable({ columns, rows, allColumns }: DreTableProps) {
+  // Filter out any internal breakdown rows
+  const visibleRows = rows.filter(
+    (r) => !["diarias_airbnb", "diarias_booking", "checkins_airbnb", "checkins_booking"].includes(r.id)
+  );
+
   const formatCellValue = (type: string, val: number | string | null) => {
     if (val === null || val === undefined) return "—";
     if (typeof val === "string") return val;
@@ -196,7 +201,7 @@ export function DreTable({ columns, rows, allColumns }: DreTableProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {rows.map((row, idx) => {
+              {visibleRows.map((row, idx) => {
                 const isHighlight = row.isHighlight || row.id === "receita_liquida_locacao";
                 const isSaldoConta = row.id === "saldo_conta";
                 const isOcupacao = row.id === "ocupacao";

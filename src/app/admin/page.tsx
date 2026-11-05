@@ -432,7 +432,9 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
-                  {currentData.rows.map((row) => (
+                  {currentData.rows
+                    .filter((r) => !["diarias_airbnb", "diarias_booking", "checkins_airbnb", "checkins_booking"].includes(r.id))
+                    .map((row) => (
                     <tr
                       key={row.id}
                       className={

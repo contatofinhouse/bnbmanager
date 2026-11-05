@@ -21,6 +21,21 @@ function normalizePropertyId(id: string): string {
   return clean;
 }
 
+const HIDDEN_ROW_IDS = new Set([
+  "diarias_airbnb",
+  "diarias_booking",
+  "checkins_airbnb",
+  "checkins_booking",
+]);
+
+function sanitizePropertyData(data: PropertyData): PropertyData {
+  if (!data || !Array.isArray(data.rows)) return data;
+  return {
+    ...data,
+    rows: data.rows.filter((r) => !HIDDEN_ROW_IDS.has(r.id)),
+  };
+}
+
 /**
  * Retrieves property data from Vercel KV, Vercel Blob, or local JSON.
  */
@@ -33,8 +48,9 @@ export async function getPropertyData(rawPropertyId: string = "copan"): Promise<
       const { kv } = await import("@vercel/kv");
       const remoteData = await kv.get<PropertyData>(`property:${propertyId}`);
       if (remoteData && remoteData.columns && remoteData.rows) {
-        inMemoryCache[propertyId] = remoteData;
-        return remoteData;
+        const sanitized = sanitizePropertyData(remoteData);
+        inMemoryCache[propertyId] = sanitized;
+        return sanitized;
       }
     } catch (err) {
       console.warn("Vercel KV fetch fallback:", err);
@@ -53,8 +69,9 @@ export async function getPropertyData(rawPropertyId: string = "copan"): Promise<
         if (res.ok) {
           const blobData = (await res.json()) as PropertyData;
           if (blobData && blobData.columns && blobData.rows) {
-            inMemoryCache[propertyId] = blobData;
-            return blobData;
+            const sanitized = sanitizePropertyData(blobData);
+            inMemoryCache[propertyId] = sanitized;
+            return sanitized;
           }
         }
       }
@@ -71,7 +88,7 @@ export async function getPropertyData(rawPropertyId: string = "copan"): Promise<
       const filePath = path.join(process.cwd(), "data", `${propertyId}.json`);
       if (fs.existsSync(filePath)) {
         const raw = fs.readFileSync(filePath, "utf-8");
-        const parsed = JSON.parse(raw) as PropertyData;
+        const parsed = sanitizePropertyData(JSON.parse(raw) as PropertyData);
         inMemoryCache[propertyId] = parsed;
         return parsed;
       }
@@ -82,13 +99,13 @@ export async function getPropertyData(rawPropertyId: string = "copan"): Promise<
 
   // 4. In-memory cache
   if (inMemoryCache[propertyId]) {
-    return inMemoryCache[propertyId];
+    return sanitizePropertyData(inMemoryCache[propertyId]);
   }
 
   // 5. Default static data
-  if (propertyId === "flatincrivel-320") return initial320Raw as unknown as PropertyData;
-  if (propertyId === "flatincrivel-229") return initial229Raw as unknown as PropertyData;
-  return initialCopanRaw as unknown as PropertyData;
+  if (propertyId === "flatincrivel-320") return sanitizePropertyData(initial320Raw as unknown as PropertyData);
+  if (propertyId === "flatincrivel-229") return sanitizePropertyData(initial229Raw as unknown as PropertyData);
+  return sanitizePropertyData(initialCopanRaw as unknown as PropertyData);
 }
 
 /**
@@ -99,9 +116,10 @@ export async function savePropertyData(
   updatedData: PropertyData
 ): Promise<{ success: boolean; storageType: string }> {
   const propertyId = normalizePropertyId(rawPropertyId);
+  const sanitized = sanitizePropertyData(updatedData);
 
   // Always update in-memory cache
-  inMemoryCache[propertyId] = updatedData;
+  inMemoryCache[propertyId] = sanitized;
 
   let storageType = "local-memory";
 
@@ -109,7 +127,7 @@ export async function savePropertyData(
   if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
     try {
       const { kv } = await import("@vercel/kv");
-      await kv.set(`property:${propertyId}`, updatedData);
+      await kv.set(`property:${propertyId}`, sanitized);
       return { success: true, storageType: "vercel-kv" };
     } catch (err: any) {
       console.error("Failed to save to Vercel KV:", err);
@@ -120,7 +138,7 @@ export async function savePropertyData(
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     try {
       const { put } = await import("@vercel/blob");
-      await put(`data/${propertyId}.json`, JSON.stringify(updatedData, null, 2), {
+      await put(`data/${propertyId}.json`, JSON.stringify(sanitized, null, 2), {
         access: "public",
         addRandomSuffix: false,
         allowOverwrite: true,
@@ -138,7 +156,7 @@ export async function savePropertyData(
       const path = await import("path");
       const filePath = path.join(process.cwd(), "data", `${propertyId}.json`);
       if (fs.existsSync(path.dirname(filePath))) {
-        await fs.promises.writeFile(filePath, JSON.stringify(updatedData, null, 2), "utf8");
+        await fs.promises.writeFile(filePath, JSON.stringify(sanitized, null, 2), "utf8");
         storageType = "local-disk";
       }
     } catch (err) {
